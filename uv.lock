@@ -1673,13 +1673,15 @@ wheels = [
 
 [[package]]
 name = "instructor"
-version = "1.8.3"
+version = "1.9.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
     { name = "docstring-parser" },
     { name = "jinja2" },
     { name = "jiter" },
+    { name = "mkdocs" },
+    { name = "mkdocs-material" },
     { name = "openai" },
     { name = "pre-commit" },
     { name = "pydantic" },
@@ -1900,8 +1902,10 @@ requires-dist = [
     { name = "material", marker = "extra == 'docs'", specifier = ">=0.1" },
     { name = "mistralai", marker = "extra == 'mistral'", specifier = ">=1.5.1,<2.0.0" },
     { name = "mistralai", marker = "extra == 'test-docs'", specifier = ">=1.5.1,<2.0.0" },
+    { name = "mkdocs", specifier = ">=1.6.1" },
     { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.4.3,<2.0.0" },
     { name = "mkdocs-jupyter", marker = "extra == 'docs'", specifier = ">=0.24.6,<0.26.0" },
+    { name = "mkdocs-material", specifier = ">=9.5.49" },
     { name = "mkdocs-material", extras = ["imaging"], marker = "extra == 'docs'", specifier = ">=9.5.9,<10.0.0" },
     { name = "mkdocs-minify-plugin", marker = "extra == 'docs'", specifier = ">=0.8.0,<1.0.0" },
     { name = "mkdocs-redirects", marker = "extra == 'docs'", specifier = ">=1.2.1,<2.0.0" },
@@ -1927,7 +1931,7 @@ requires-dist = [
     { name = "rich", specifier = ">=13.7.0,<15.0.0" },
     { name = "sqlmodel", marker = "extra == 'sqlmodel'", specifier = ">=0.0.22,<1.0.0" },
     { name = "tabulate", marker = "extra == 'test-docs'", specifier = ">=0.9.0,<1.0.0" },
-    { name = "tenacity", specifier = ">=9.0.0,<10.0.0" },
+    { name = "tenacity", specifier = ">=8.2.3,<10.0.0" },
     { name = "trafilatura", marker = "extra == 'trafilatura'", specifier = ">=1.12.2,<3.0.0" },
     { name = "typer", specifier = ">=0.9.0,<1.0.0" },
     { name = "writer-sdk", marker = "extra == 'writer'", specifier = ">=2.2.0,<3.0.0" },
