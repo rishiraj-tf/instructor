@@ -1,7 +1,7 @@
 import os
 import asyncio
 import yaml
-from typing import Optional
+from typing import Optional, Dict, List, Set, Tuple
 from collections.abc import Generator
 from openai import AsyncOpenAI
 import typer
@@ -10,6 +10,8 @@ from rich.progress import Progress
 import hashlib
 from asyncio import as_completed
 import tenacity
+import re
+from pathlib import Path
 
 console = Console()
 
@@ -39,17 +41,75 @@ def traverse_docs(
                 yield relative_path, content, content_hash
 
 
+def extract_markdown_links(content: str) -> List[str]:
+    """
+    Extract all markdown links from the content.
+
+    Args:
+        content (str): The markdown content to analyze
+
+    Returns:
+        List[str]: List of extracted link paths
+    """
+    # Match markdown links [text](path)
+    link_pattern = r"\[([^\]]+)\]\(([^)]+)\)"
+    matches = re.findall(link_pattern, content)
+
+    links = []
+    for _, link_path in matches:
+        # Filter out external links and anchors
+        if not link_path.startswith(("http://", "https://", "#", "mailto:")):
+            # Clean up relative paths
+            link_path = link_path.strip("/")
+            if link_path.endswith(".md"):
+                links.append(link_path)
+            elif "." not in link_path:
+                # Assume it's a directory reference, add index.md
+                links.append(f"{link_path}/index.md")
+
+    return links
+
+
+def normalize_path(path: str, current_path: str) -> str:
+    """
+    Normalize a relative path based on the current file's location.
+
+    Args:
+        path (str): The path to normalize
+        current_path (str): The current file's path
+
+    Returns:
+        str: The normalized path
+    """
+    if path.startswith("/"):
+        # Absolute path from docs root
+        return path.strip("/")
+
+    # Relative path
+    current_dir = os.path.dirname(current_path)
+    if current_dir:
+        normalized = os.path.normpath(os.path.join(current_dir, path))
+        # Remove any leading '../' that go outside docs/
+        while normalized.startswith("../"):
+            normalized = normalized[3:]
+        return normalized
+
+    return path
+
+
 @tenacity.retry(
     stop=tenacity.stop_after_attempt(3),
     wait=tenacity.wait_exponential(multiplier=1, min=4, max=10),
     retry=tenacity.retry_if_exception_type(Exception),
     before_sleep=lambda retry_state: console.print(
-        f"[yellow]Retrying summarization... (Attempt {retry_state.attempt_number})[/yellow]"
+        f"[yellow]Retrying analysis... (Attempt {retry_state.attempt_number})[/yellow]"
     ),
 )
-async def summarize_content(client: AsyncOpenAI, path: str, content: str) -> str:
+async def analyze_content(
+    client: AsyncOpenAI, path: str, content: str
+) -> Dict[str, any]:
     """
-    Summarize the content of a file with retry logic.
+    Analyze the content of a file to extract summary, keywords, topics, and references.
 
     Args:
         client (AsyncOpenAI): The AsyncOpenAI client.
@@ -57,31 +117,147 @@ async def summarize_content(client: AsyncOpenAI, path: str, content: str) -> str
         content (str): The content of the file.
 
     Returns:
-        str: A summary of the content.
+        Dict[str, any]: Analysis results including summary, keywords, topics, and references.
 
     Raises:
         Exception: If all retry attempts fail.
     """
     try:
         response = await client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a helpful assistant that summarizes text.",
+                    "content": """You are a documentation analyzer. Extract and return the following information in a structured format:
+1. A concise summary (2-3 sentences) for SEO
+2. A list of important keywords (5-10 words/phrases)
+3. Main topics/concepts covered (3-5 topics)
+4. Any references to other documentation pages mentioned in the text
+
+Return the response in this exact format:
+SUMMARY: [Your summary here]
+KEYWORDS: [keyword1, keyword2, keyword3, ...]
+TOPICS: [topic1, topic2, topic3, ...]
+REFERENCES: [referenced_page1.md, referenced_page2.md, ...]
+
+If no references are found, write: REFERENCES: none""",
                 },
                 {"role": "user", "content": content},
-                {
-                    "role": "user",
-                    "content": "Please summarize the content in a few sentences so they can be used for SEO. Include core ideas, objectives, and important details and key points and key words",
-                },
             ],
             max_tokens=4000,
         )
-        return response.choices[0].message.content
+
+        result_text = response.choices[0].message.content
+
+        # Parse the structured response
+        summary = ""
+        keywords = []
+        topics = []
+        references = []
+
+        for line in result_text.split("\n"):
+            line = line.strip()
+            if line.startswith("SUMMARY:"):
+                summary = line[8:].strip()
+            elif line.startswith("KEYWORDS:"):
+                keywords_text = line[9:].strip()
+                if keywords_text and keywords_text != "none":
+                    keywords = [k.strip() for k in keywords_text.split(",")]
+            elif line.startswith("TOPICS:"):
+                topics_text = line[7:].strip()
+                if topics_text and topics_text != "none":
+                    topics = [t.strip() for t in topics_text.split(",")]
+            elif line.startswith("REFERENCES:"):
+                refs_text = line[11:].strip()
+                if refs_text and refs_text != "none":
+                    references = [r.strip() for r in refs_text.split(",")]
+
+        return {
+            "summary": summary,
+            "keywords": keywords,
+            "topics": topics,
+            "ai_references": references,
+        }
+
     except Exception as e:
-        console.print(f"[bold red]Error summarizing {path}: {str(e)}[/bold red]")
-        raise  # Re-raise the exception to trigger a retry
+        console.print(f"[bold red]Error analyzing {path}: {str(e)}[/bold red]")
+        raise
+
+
+def calculate_similarity_score(data1: Dict, data2: Dict) -> float:
+    """
+    Calculate similarity score between two documents based on keywords and topics.
+
+    Args:
+        data1 (Dict): First document's data
+        data2 (Dict): Second document's data
+
+    Returns:
+        float: Similarity score between 0 and 1
+    """
+    # Extract sets of keywords and topics
+    keywords1 = set(k.lower() for k in data1.get("keywords", []))
+    keywords2 = set(k.lower() for k in data2.get("keywords", []))
+
+    topics1 = set(t.lower() for t in data1.get("topics", []))
+    topics2 = set(t.lower() for t in data2.get("topics", []))
+
+    # Calculate overlap
+    keyword_overlap = len(keywords1 & keywords2) / max(len(keywords1 | keywords2), 1)
+    topic_overlap = len(topics1 & topics2) / max(len(topics1 | topics2), 1)
+
+    # Weighted average (topics are more important)
+    return 0.4 * keyword_overlap + 0.6 * topic_overlap
+
+
+def generate_cross_links(
+    sitemap_data: Dict[str, Dict], min_similarity: float = 0.3
+) -> Dict[str, List[str]]:
+    """
+    Generate cross-link suggestions based on content similarity and references.
+
+    Args:
+        sitemap_data (Dict): The complete sitemap data
+        min_similarity (float): Minimum similarity score for suggesting links
+
+    Returns:
+        Dict[str, List[str]]: Cross-link suggestions for each document
+    """
+    cross_links = {}
+
+    for path1, data1 in sitemap_data.items():
+        suggested_links = set()
+
+        # Add explicit references found in content
+        for ref in data1.get("references", []):
+            if ref in sitemap_data and ref != path1:
+                suggested_links.add(ref)
+
+        # Add AI-detected references
+        for ref in data1.get("ai_references", []):
+            # Try to match the reference to actual files
+            for path2 in sitemap_data:
+                if ref in path2 or path2 in ref:
+                    if path2 != path1:
+                        suggested_links.add(path2)
+
+        # Find similar documents based on keywords and topics
+        similarities = []
+        for path2, data2 in sitemap_data.items():
+            if path2 != path1:
+                score = calculate_similarity_score(data1, data2)
+                if score >= min_similarity:
+                    similarities.append((path2, score))
+
+        # Sort by similarity and take top 5
+        similarities.sort(key=lambda x: x[1], reverse=True)
+        for path2, score in similarities[:5]:
+            suggested_links.add(path2)
+
+        # Convert to sorted list
+        cross_links[path1] = sorted(list(suggested_links))
+
+    return cross_links
 
 
 async def generate_sitemap(
@@ -89,6 +265,7 @@ async def generate_sitemap(
     output_file: str,
     api_key: Optional[str] = None,
     max_concurrency: int = 5,
+    min_similarity: float = 0.3,
 ) -> None:
     """
     Generate a sitemap from the given root directory.
@@ -98,33 +275,70 @@ async def generate_sitemap(
         output_file (str): The output file to save the sitemap.
         api_key (Optional[str]): The OpenAI API key. If not provided, it will be read from the OPENAI_API_KEY environment variable.
         max_concurrency (int): The maximum number of concurrent tasks. Defaults to 5.
+        min_similarity (float): Minimum similarity score for cross-link suggestions. Defaults to 0.3.
     """
     client = AsyncOpenAI(api_key=api_key)
 
     # Load existing sitemap if it exists
-    existing_sitemap: dict[str, dict[str, str]] = {}
+    existing_sitemap: dict[str, dict[str, any]] = {}
     if os.path.exists(output_file):
         with open(output_file, encoding="utf-8") as sitemap_file:
             existing_sitemap = yaml.safe_load(sitemap_file) or {}
 
-    sitemap_data: dict[str, dict[str, str]] = {}
+    sitemap_data: dict[str, dict[str, any]] = {}
 
     async def process_file(
         path: str, content: str, content_hash: str
-    ) -> tuple[str, dict[str, str]]:
+    ) -> tuple[str, dict[str, any]]:
+        # Check if we can reuse existing data
         if (
             path in existing_sitemap
             and existing_sitemap[path].get("hash") == content_hash
         ):
-            return path, existing_sitemap[path]
+            # Extract markdown links even for cached content
+            links = extract_markdown_links(content)
+            normalized_links = []
+            for link in links:
+                normalized = normalize_path(link, path)
+                if normalized:
+                    normalized_links.append(normalized)
+
+            existing_data = existing_sitemap[path].copy()
+            existing_data["references"] = normalized_links
+            return path, existing_data
+
         try:
-            summary = await summarize_content(client, path, content)
-            return path, {"summary": summary, "hash": content_hash}
+            # Extract markdown links
+            links = extract_markdown_links(content)
+            normalized_links = []
+            for link in links:
+                normalized = normalize_path(link, path)
+                if normalized:
+                    normalized_links.append(normalized)
+
+            # Get AI analysis
+            analysis = await analyze_content(client, path, content)
+
+            return path, {
+                "summary": analysis["summary"],
+                "keywords": analysis["keywords"],
+                "topics": analysis["topics"],
+                "references": normalized_links,
+                "ai_references": analysis["ai_references"],
+                "hash": content_hash,
+            }
         except Exception as e:
             console.print(
-                f"[bold red]Failed to summarize {path} after multiple attempts: {str(e)}[/bold red]"
+                f"[bold red]Failed to analyze {path} after multiple attempts: {str(e)}[/bold red]"
             )
-            return path, {"summary": "Failed to generate summary", "hash": content_hash}
+            return path, {
+                "summary": "Failed to generate summary",
+                "keywords": [],
+                "topics": [],
+                "references": normalized_links,
+                "ai_references": [],
+                "hash": content_hash,
+            }
 
     files_to_process: list[tuple[str, str, str]] = list(traverse_docs(root_dir))
     total_files = len(files_to_process)
@@ -148,12 +362,24 @@ async def generate_sitemap(
             sitemap_data[path] = result
             progress.update(task, advance=1)
 
-            # Save intermediate results
-            with open(output_file, "w", encoding="utf-8") as sitemap_file:
-                yaml.dump(sitemap_data, sitemap_file, default_flow_style=False)
+    # Generate cross-links after all files are processed
+    console.print("[yellow]Generating cross-link suggestions...[/yellow]")
+    cross_links = generate_cross_links(sitemap_data, min_similarity)
+
+    # Add cross-links to sitemap data
+    for path, links in cross_links.items():
+        if path in sitemap_data:
+            sitemap_data[path]["cross_links"] = links
+
+    # Save final results
+    with open(output_file, "w", encoding="utf-8") as sitemap_file:
+        yaml.dump(sitemap_data, sitemap_file, default_flow_style=False, sort_keys=True)
 
     console.print(
-        f"[bold green]Sitemap has been generated and saved to {output_file}[/bold green]"
+        f"[bold green]Enhanced sitemap has been generated and saved to {output_file}[/bold green]"
+    )
+    console.print(
+        f"[green]Processed {total_files} files with cross-link suggestions[/green]"
     )
 
 
@@ -166,11 +392,18 @@ def main(
     output_file: str = typer.Option("sitemap.yaml", help="Output file for the sitemap"),
     api_key: Optional[str] = typer.Option(None, help="OpenAI API key"),
     max_concurrency: int = typer.Option(5, help="Maximum number of concurrent tasks"),
+    min_similarity: float = typer.Option(
+        0.3, help="Minimum similarity score for cross-link suggestions (0-1)"
+    ),
 ):
     """
-    Generate a sitemap from the given root directory.
+    Generate an enhanced sitemap with keywords, topics, and cross-link suggestions.
     """
-    asyncio.run(generate_sitemap(root_dir, output_file, api_key, max_concurrency))
+    asyncio.run(
+        generate_sitemap(
+            root_dir, output_file, api_key, max_concurrency, min_similarity
+        )
+    )
 
 
 if __name__ == "__main__":
