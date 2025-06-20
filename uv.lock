@@ -134,7 +134,7 @@ wheels = [
 
 [[package]]
 name = "anthropic"
-version = "0.52.1"
+version = "0.53.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -145,9 +145,9 @@ dependencies = [
     { name = "sniffio" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0c/6b/7d632b680556812f36b663891ccab8f5bf71b61913a3c7332aa7aa2822be/anthropic-0.52.1.tar.gz", hash = "sha256:da4a7c3aeac0170cb45a42dc3369ca1fcf2b3238edf845cb056505d4b0c42fcf", size = 241807, upload-time = "2025-05-28T13:13:40.851Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c1/f6/a78ff9e23981fde136c3ae5427a39b27df92ebe5e5997c6203796449f1e5/anthropic-0.53.0.tar.gz", hash = "sha256:f5d1499fc45b2e05801fcbbeae25679f72f7479763e3c706126a7a7c8de06eff", size = 307716, upload-time = "2025-06-09T16:20:31.689Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9d/e7/36ad2dc22811ea004e1f511b2f5604fe71a56bdfd3b969b265892d45affa/anthropic-0.52.1-py3-none-any.whl", hash = "sha256:807cee7ebc5503753da0403a77932decf5a4c036041ddda58b4edcdb2a3da551", size = 286076, upload-time = "2025-05-28T13:13:39.052Z" },
+    { url = "https://files.pythonhosted.org/packages/a9/3f/82c21f74afa3541d69d20b8265c7fdfd078a687e9eea48fda30f1838d0b7/anthropic-0.53.0-py3-none-any.whl", hash = "sha256:b3a84751885a81d96bbddef180c3ce559c9140f7f230cdd825385405bd6d312e", size = 287248, upload-time = "2025-06-09T16:20:29.98Z" },
 ]
 
 [[package]]
@@ -1846,7 +1846,7 @@ writer = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.9.1,<4.0.0" },
-    { name = "anthropic", marker = "extra == 'anthropic'", specifier = "==0.52.1" },
+    { name = "anthropic", marker = "extra == 'anthropic'", specifier = "==0.53.0" },
     { name = "boto3", marker = "extra == 'bedrock'", specifier = ">=1.34.0,<2.0.0" },
     { name = "cerebras-cloud-sdk", marker = "extra == 'cerebras-cloud-sdk'", specifier = ">=1.5.0,<2.0.0" },
     { name = "cohere", marker = "extra == 'cohere'", specifier = ">=5.1.8,<6.0.0" },
@@ -1860,7 +1860,7 @@ requires-dist = [
     { name = "google-genai", marker = "extra == 'google-genai'", specifier = ">=1.5.0" },
     { name = "google-generativeai", marker = "extra == 'google-generativeai'", specifier = ">=0.8.2,<1.0.0" },
     { name = "graphviz", marker = "extra == 'graphviz'", specifier = ">=0.20.3,<1.0.0" },
-    { name = "groq", marker = "extra == 'groq'", specifier = ">=0.4.2,<0.26.0" },
+    { name = "groq", marker = "extra == 'groq'", specifier = ">=0.4.2,<0.27.0" },
     { name = "jinja2", specifier = ">=3.1.4,<4.0.0" },
     { name = "jiter", specifier = ">=0.6.1,<0.11" },
     { name = "jsonref", marker = "extra == 'dev'", specifier = ">=1.1.0,<2.0.0" },
@@ -1878,12 +1878,12 @@ requires-dist = [
     { name = "mkdocs-minify-plugin", marker = "extra == 'docs'", specifier = ">=0.8.0,<1.0.0" },
     { name = "mkdocs-redirects", marker = "extra == 'docs'", specifier = ">=1.2.1,<2.0.0" },
     { name = "mkdocs-rss-plugin", marker = "extra == 'docs'", specifier = ">=1.12.0,<2.0.0" },
-    { name = "mkdocstrings", marker = "extra == 'docs'", specifier = ">=0.26.1,<0.28.0" },
+    { name = "mkdocstrings", marker = "extra == 'docs'", specifier = ">=0.26.1,<0.30.0" },
     { name = "mkdocstrings-python", marker = "extra == 'docs'", specifier = ">=1.11.1,<2.0.0" },
     { name = "openai", specifier = ">=1.70.0,<2.0.0" },
     { name = "openai", marker = "extra == 'perplexity'", specifier = ">=1.52.0,<2.0.0" },
     { name = "pandas", marker = "extra == 'test-docs'", specifier = ">=2.2.0,<3.0.0" },
-    { name = "phonenumbers", marker = "extra == 'phonenumbers'", specifier = ">=8.13.33,<9.0.0" },
+    { name = "phonenumbers", marker = "extra == 'phonenumbers'", specifier = ">=8.13.33,<10.0.0" },
     { name = "pydantic", specifier = ">=2.8.0,<3.0.0" },
     { name = "pydantic-core", specifier = ">=2.18.0,<3.0.0" },
     { name = "pydantic-extra-types", marker = "extra == 'test-docs'", specifier = ">=2.6.0,<3.0.0" },
@@ -1901,14 +1901,14 @@ requires-dist = [
     { name = "tenacity", specifier = ">=9.0.0,<10.0.0" },
     { name = "trafilatura", marker = "extra == 'trafilatura'", specifier = ">=1.12.2,<3.0.0" },
     { name = "typer", specifier = ">=0.9.0,<1.0.0" },
-    { name = "writer-sdk", marker = "extra == 'writer'", specifier = ">=1.2.0,<2.0.0" },
+    { name = "writer-sdk", marker = "extra == 'writer'", specifier = ">=2.2.0,<3.0.0" },
     { name = "xmltodict", marker = "extra == 'anthropic'", specifier = ">=0.13,<0.15" },
 ]
 provides-extras = ["dev", "docs", "test-docs", "anthropic", "groq", "cohere", "google-generativeai", "vertexai", "cerebras-cloud-sdk", "fireworks-ai", "writer", "bedrock", "mistral", "perplexity", "google-genai", "litellm", "phonenumbers", "graphviz", "sqlmodel", "trafilatura", "pydub", "datasets"]
 
 [package.metadata.requires-dev]
 anthropic = [
-    { name = "anthropic", specifier = "==0.52.1" },
+    { name = "anthropic", specifier = "==0.53.0" },
     { name = "xmltodict", specifier = ">=0.13,<0.15" },
 ]
 bedrock = [{ name = "boto3", specifier = ">=1.34.0,<2.0.0" }]
@@ -1930,7 +1930,7 @@ docs = [
     { name = "mkdocs-minify-plugin", specifier = ">=0.8.0,<1.0.0" },
     { name = "mkdocs-redirects", specifier = ">=1.2.1,<2.0.0" },
     { name = "mkdocs-rss-plugin", specifier = ">=1.12.0,<2.0.0" },
-    { name = "mkdocstrings", specifier = ">=0.26.1,<0.28.0" },
+    { name = "mkdocstrings", specifier = ">=0.26.1,<0.30.0" },
     { name = "mkdocstrings-python", specifier = ">=1.11.1,<2.0.0" },
     { name = "pytest-examples", specifier = ">=0.0.15" },
 ]
@@ -1943,12 +1943,12 @@ google-generativeai = [
     { name = "google-generativeai", specifier = ">=0.8.2,<1.0.0" },
     { name = "jsonref", specifier = ">=1.1.0,<2.0.0" },
 ]
-groq = [{ name = "groq", specifier = ">=0.4.2,<0.26.0" }]
+groq = [{ name = "groq", specifier = ">=0.4.2,<0.27.0" }]
 litellm = [{ name = "litellm", specifier = ">=1.35.31,<2.0.0" }]
 mistral = [{ name = "mistralai", specifier = ">=1.5.1,<2.0.0" }]
 perplexity = [{ name = "openai", specifier = ">=1.52.0,<2.0.0" }]
 test-docs = [
-    { name = "anthropic", specifier = "==0.52.1" },
+    { name = "anthropic", specifier = "==0.53.0" },
     { name = "cerebras-cloud-sdk", specifier = ">=1.5.0,<2.0.0" },
     { name = "cohere", specifier = ">=5.1.8,<6.0.0" },
     { name = "datasets", specifier = ">=3.0.1,<4.0.0" },
@@ -1956,25 +1956,25 @@ test-docs = [
     { name = "fastapi", specifier = ">=0.109.2,<0.116.0" },
     { name = "fireworks-ai", specifier = ">=0.15.4,<1.0.0" },
     { name = "graphviz", specifier = ">=0.20.3,<1.0.0" },
-    { name = "groq", specifier = ">=0.4.2,<0.26.0" },
+    { name = "groq", specifier = ">=0.4.2,<0.27.0" },
     { name = "litellm", specifier = ">=1.35.31,<2.0.0" },
     { name = "mistralai", specifier = ">=1.5.1,<2.0.0" },
     { name = "pandas", specifier = ">=2.2.0,<3.0.0" },
-    { name = "phonenumbers", specifier = ">=8.13.33,<9.0.0" },
+    { name = "phonenumbers", specifier = ">=8.13.33,<10.0.0" },
     { name = "pydantic-extra-types", specifier = ">=2.6.0,<3.0.0" },
     { name = "pydub", specifier = ">=0.25.1,<1.0.0" },
     { name = "redis", specifier = ">=5.0.1,<7.0.0" },
     { name = "sqlmodel", specifier = ">=0.0.22,<1.0.0" },
     { name = "tabulate", specifier = ">=0.9.0,<1.0.0" },
     { name = "trafilatura", specifier = ">=1.12.2,<3.0.0" },
-    { name = "writer-sdk", specifier = ">=1.2.0,<2.0.0" },
+    { name = "writer-sdk", specifier = ">=2.2.0,<3.0.0" },
     { name = "xmltodict", specifier = ">=0.13,<0.15" },
 ]
 vertexai = [
     { name = "google-cloud-aiplatform", specifier = ">=1.53.0,<2.0.0" },
     { name = "jsonref", specifier = ">=1.1.0,<2.0.0" },
 ]
-writer = [{ name = "writer-sdk", specifier = ">=1.2.0,<2.0.0" }]
+writer = [{ name = "writer-sdk", specifier = ">=2.2.0,<3.0.0" }]
 
 [[package]]
 name = "ipykernel"
@@ -4910,19 +4910,20 @@ wheels = [
 
 [[package]]
 name = "writer-sdk"
-version = "1.6.1"
+version = "2.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "distro" },
     { name = "httpx" },
+    { name = "jiter" },
     { name = "pydantic" },
     { name = "sniffio" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/99/80/6c2c67421c88a50c8929f2f5d0e9848c6c4665d1bb7990a45c4afe1461a0/writer_sdk-1.6.1.tar.gz", hash = "sha256:12dc5b01266a19bf4b17cb5e47310e4743c906c271693a6f0a370ea544256402", size = 118073, upload-time = "2024-12-20T21:19:26.014Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/53/66/a02d92cda1c5a1ced300ddb220ebc87191610f89c088ede48f53838c79e0/writer_sdk-2.2.0.tar.gz", hash = "sha256:876ba1ff3356da2f8d40f4291056a6930b9277aa1d619167e17fcc859f40e83a", size = 160607, upload-time = "2025-04-30T18:44:47.32Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5e/5a/86aa4ff9eef0fc524e38aeb6459bd39e2a87da344230423fee3e040a97ca/writer_sdk-1.6.1-py3-none-any.whl", hash = "sha256:72b26c26441cc72140f4992ce2de211aa348ce2bc7cb25f83be40c5b824a455f", size = 110830, upload-time = "2024-12-20T21:19:22.589Z" },
+    { url = "https://files.pythonhosted.org/packages/90/33/2c330a915d19bd8aba2a6d9dfe34083fd9b123fe403e5f82cb5d7a4315a9/writer_sdk-2.2.0-py3-none-any.whl", hash = "sha256:4a8460bf114f6ee9b91992de0f310e590f9700706e5350fcbc4017d81988a34c", size = 169168, upload-time = "2025-04-30T18:44:45.827Z" },
 ]
 
 [[package]]

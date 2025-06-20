@@ -105,7 +105,7 @@ Working with PDFs doesn't have to be complicated.
 
 By combining Gemini's multimodal capabilities with Instructor's structured output handling, we can transform complex document processing into simple, Pythonic code.
 
-No more wrestling with parsing rules, managing embeddings, or building complex pipelines – just define your data model and let the LLM do the heavy lifting.
+No more wrestling with parsing rules, managing embeddings, or building complex pipelines - just define your data model and let the LLM do the heavy lifting.
 
 ## Related Documentation
 - [Multimodal Processing](/concepts/multimodal) - Core multimodal concepts

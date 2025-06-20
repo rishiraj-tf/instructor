@@ -5,11 +5,11 @@ description: Learn how to integrate Instructor with SQLModel for seamless databa
 
 # Integrating Instructor with SQLModel
 
-[SQLModel](https://sqlmodel.tiangolo.com/) is a library designed for interacting with SQL databases from Python code using Python objects. 
+[SQLModel](https://sqlmodel.tiangolo.com/) is a library designed for interacting with SQL databases from Python code using Python objects.
 
-`SQLModel` is based on `Pydantic` and `SQLAlchemy` and was created by [tiangolo](https://twitter.com/tiangolo) who also developed `FastAPI`. 
+`SQLModel` is based on `Pydantic` and `SQLAlchemy` and was created by [tiangolo](https://twitter.com/tiangolo) who also developed `FastAPI`.
 
-So you can expect seamless integration across all these libraries, reducing code duplicating and improving your developer experience. 
+So you can expect seamless integration across all these libraries, reducing code duplicating and improving your developer experience.
 
 # Example: Adding responses from Instructor directly to your DB
 
@@ -38,13 +38,13 @@ class Hero(SQLModel, instructor.OpenAISchema, table=True):
 
 ### The Importance of Using SkipJsonSchema
 
-Notice the use of `SkipJsonSchema` for the `id` field. 
+Notice the use of `SkipJsonSchema` for the `id` field.
 
 This prunes the field from the JSON schema sent to the LLM, so it won't try to generate a UUID.
 
 When Instructor unpacks the response and loads it into the Hero model, it will automatically generate a UUID using the default_factory.
-    
-This approach saves tokens during LLM generation and more importantly protects against errors that might occur if the LLM generates an incorrect UUID format. 
+
+This approach saves tokens during LLM generation and more importantly protects against errors that might occur if the LLM generates an incorrect UUID format.
 
 The resulting JSON schema sent to the LLM will look like:
 
@@ -174,4 +174,4 @@ with Session(engine) as session:
 
 ![Image of hero record in the database](db.png)
 
-And there you have it! You can now use the same models for your database and `Instructor` enabling them work seamlessly! Also checkout the [FastAPI](../concepts/fastapi.md) guide to see how you can use these models in an API as well. 
+And there you have it! You can now use the same models for your database and `Instructor` enabling them work seamlessly! Also checkout the [FastAPI](../concepts/fastapi.md) guide to see how you can use these models in an API as well.
