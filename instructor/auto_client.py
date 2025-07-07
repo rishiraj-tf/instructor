@@ -456,7 +456,10 @@ def from_provider(
 
             client = AsyncClient() if async_client else SyncClient()
             return from_xai(
-                client, mode=mode if mode else instructor.Mode.JSON, **kwargs
+                client,
+                mode=mode if mode else instructor.Mode.JSON,
+                model=model_name,
+                **kwargs,
             )
         except ImportError:
             from instructor.exceptions import ConfigurationError
