@@ -4,6 +4,7 @@ from instructor.client import AsyncInstructor, Instructor
 import instructor
 from instructor.models import KnownModelName
 from instructor.cache import BaseCache
+import warnings
 
 # Type alias for the return type
 InstructorType = Union[Instructor, AsyncInstructor]
@@ -15,6 +16,8 @@ supported_providers = [
     "azure_openai",
     "anthropic",
     "google",
+    "generative-ai",
+    "vertexai",
     "mistral",
     "cohere",
     "perplexity",
@@ -23,8 +26,6 @@ supported_providers = [
     "bedrock",
     "cerebras",
     "fireworks",
-    "vertexai",
-    "generative-ai",
     "ollama",
     "xai",
 ]
@@ -226,17 +227,35 @@ def from_provider(
         try:
             import google.genai as genai
             from instructor import from_genai
+            import os
+
+            # Remove vertexai from kwargs if present to avoid passing it twice
+            vertexai_flag = kwargs.pop("vertexai", False)
+
+            # Get API key from kwargs or environment
+            api_key = kwargs.pop("api_key", os.environ.get("GOOGLE_API_KEY"))
+
+            # Extract client-specific parameters
+            client_kwargs = {}
+            for key in [
+                "debug_config",
+                "http_options",
+                "credentials",
+                "project",
+                "location",
+            ]:
+                if key in kwargs:
+                    client_kwargs[key] = kwargs.pop(key)
 
             client = genai.Client(
-                vertexai=False
-                if kwargs.get("vertexai") is None
-                else kwargs.get("vertexai"),
-                **kwargs,
-            )
+                vertexai=vertexai_flag,
+                api_key=api_key,
+                **client_kwargs,
+            )  # type: ignore
             if async_client:
-                return from_genai(client, use_async=True, model=model_name, **kwargs)
+                return from_genai(client, use_async=True, model=model_name, **kwargs)  # type: ignore
             else:
-                return from_genai(client, model=model_name, **kwargs)
+                return from_genai(client, model=model_name, **kwargs)  # type: ignore
         except ImportError:
             import_err = ImportError(
                 "The google-genai package is required to use the Google provider. "
@@ -387,32 +406,71 @@ def from_provider(
             raise import_err from None
 
     elif provider == "vertexai":
+        warnings.warn(
+            "The 'vertexai' provider is deprecated. Use 'google' provider with vertexai=True instead. "
+            "Example: instructor.from_provider('google/gemini-pro', vertexai=True)",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         try:
-            import vertexai.generative_models as gm
-            from instructor import from_vertexai
+            import google.genai as genai  # type: ignore
+            from instructor import from_genai
+            import os
 
-            client = gm.GenerativeModel(model_name=model_name)
-            return from_vertexai(client, use_async=async_client, **kwargs)
+            # Get project and location from kwargs or environment
+            project = kwargs.pop("project", os.environ.get("GOOGLE_CLOUD_PROJECT"))
+            location = kwargs.pop(
+                "location", os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
+            )
+
+            if not project:
+                raise ValueError(
+                    "Project ID is required for Vertex AI. "
+                    "Set it with `export GOOGLE_CLOUD_PROJECT=<your-project-id>` "
+                    "or pass it as kwarg project=<your-project-id>"
+                )
+
+            client = genai.Client(
+                vertexai=True,
+                project=project,
+                location=location,
+                **kwargs,
+            )  # type: ignore
+            kwargs["model"] = model_name  # Pass model as part of kwargs
+            if async_client:
+                return from_genai(client, use_async=True, **kwargs)  # type: ignore
+            else:
+                return from_genai(client, **kwargs)  # type: ignore
         except ImportError:
             import_err = ImportError(
-                "The google-cloud-aiplatform package is required to use the VertexAI provider. "
-                "Install it with `pip install google-cloud-aiplatform`."
+                "The google-genai package is required to use the VertexAI provider. "
+                "Install it with `pip install google-genai`."
             )
             raise import_err from None
 
     elif provider == "generative-ai":
+        warnings.warn(
+            "The 'generative-ai' provider is deprecated. Use 'google' provider instead. "
+            "Example: instructor.from_provider('google/gemini-pro')",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         try:
-            from google.generativeai import GenerativeModel
-            from instructor import from_gemini
+            from google import genai
+            from instructor import from_genai
+            import os
 
-            client = GenerativeModel(model_name=model_name)
+            # Get API key from kwargs or environment
+            api_key = kwargs.pop("api_key", os.environ.get("GOOGLE_API_KEY"))
+
+            client = genai.Client(vertexai=False, api_key=api_key)
             if async_client:
-                return from_gemini(client, use_async=True, **kwargs)
+                return from_genai(client, use_async=True, model=model_name, **kwargs)  # type: ignore
             else:
-                return from_gemini(client, **kwargs)
+                return from_genai(client, model=model_name, **kwargs)  # type: ignore
         except ImportError:
             import_err = ImportError(
-                "The google-generativeai package is required to use the Google GenAI provider. "
+                "The google-genai package is required to use the Google GenAI provider. "
                 "Install it with `pip install google-genai`."
             )
             raise import_err from None
