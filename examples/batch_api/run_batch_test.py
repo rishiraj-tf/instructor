@@ -7,8 +7,13 @@ Creates a batch job to extract User(name: str, age: int) data from text examples
 Supports:
 - OpenAI: openai/gpt-4o-mini, openai/gpt-4o, etc.
 - Anthropic: anthropic/claude-3-5-sonnet-20241022, anthropic/claude-3-opus-20240229, etc.
+- Google: google/gemini-2.5-flash, google/gemini-pro, etc.
 
 Usage:
+    # Default (Google Gemini 2.5 Flash)
+    export GOOGLE_API_KEY="your-key"
+    python run_batch_test.py
+
     # OpenAI
     export OPENAI_API_KEY="your-key"
     python run_batch_test.py --model "openai/gpt-4o-mini"
@@ -16,11 +21,15 @@ Usage:
     # Anthropic
     export ANTHROPIC_API_KEY="your-key"
     python run_batch_test.py --model "anthropic/claude-3-5-sonnet-20241022"
+
+    # Google with specific model
+    export GOOGLE_API_KEY="your-key"
+    python run_batch_test.py --model "google/gemini-2.5-flash"
 """
 
 import os
 import sys
-from typing import List, Optional
+from typing import Optional
 import typer
 from pydantic import BaseModel
 
@@ -28,6 +37,7 @@ from pydantic import BaseModel
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 from instructor.batch import (
     BatchProcessor,
+    BatchStatus,
     filter_successful,
     filter_errors,
     extract_results,
@@ -41,7 +51,7 @@ class User(BaseModel):
     age: int
 
 
-def create_test_messages() -> List[List[dict]]:
+def create_test_messages() -> list[list[dict]]:
     """Create test message conversations for user extraction"""
     test_prompts = [
         "Hi there! My name is Alice and I'm 28 years old. I work as a software engineer.",
@@ -61,7 +71,7 @@ def create_test_messages() -> List[List[dict]]:
     return messages_list
 
 
-def get_expected_results() -> List[User]:
+def get_expected_results() -> list[User]:
     """Get the expected User objects for validation"""
     return [
         User(name="Alice", age=28),
@@ -73,11 +83,18 @@ def check_api_key(provider: str) -> bool:
     key_map = {
         "openai": "OPENAI_API_KEY",
         "anthropic": "ANTHROPIC_API_KEY",
+        "google": "GOOGLE_API_KEY",
     }
 
     required_key = key_map.get(provider)
     if not required_key:
         return True  # Unknown provider, let it fail later
+
+    if provider == "google":
+        # Google is optional since we simulate
+        if not os.getenv(required_key):
+            typer.echo(f"Warning: {required_key} not set - will run in simulation mode")
+        return True
 
     if not os.getenv(required_key):
         typer.echo(f"Error: {required_key} environment variable is not set", err=True)
@@ -90,7 +107,7 @@ def check_api_key(provider: str) -> bool:
     return True
 
 
-def create_openai_batch(model: str, messages_list: List[List[dict]]) -> Optional[str]:
+def create_openai_batch(model: str, messages_list: list[list[dict]]) -> Optional[str]:
     """Create OpenAI batch job using BatchProcessor"""
     processor = BatchProcessor(model, User)
 
@@ -117,7 +134,7 @@ def create_openai_batch(model: str, messages_list: List[List[dict]]) -> Optional
 
 
 def create_anthropic_batch(
-    model: str, messages_list: List[List[dict]]
+    model: str, messages_list: list[list[dict]]
 ) -> Optional[str]:
     """Create Anthropic batch job using BatchProcessor"""
     processor = BatchProcessor(model, User)
@@ -141,11 +158,28 @@ def create_anthropic_batch(
             os.remove(batch_filename)
 
 
+def create_google_batch(model: str, messages_list: list[list[dict]]) -> Optional[str]:
+    """Create Google batch job using BatchProcessor (inline only)"""
+    processor = BatchProcessor(model, User)
+
+    typer.echo("Submitting Google inline batch...")
+    batch_id = processor.submit_batch(
+        messages_list=messages_list,
+        metadata={"description": "Unified BatchProcessor test"},
+        use_inline=True,
+        max_tokens=200,
+        temperature=0.1,
+    )
+
+    typer.echo(f"Inline batch job created: {batch_id}")
+    return batch_id
+
+
 @app.command()
 def create(
     model: str = typer.Option(
-        "openai/gpt-4o-mini",
-        help="Model in format 'provider/model-name' (e.g., 'openai/gpt-4o-mini', 'anthropic/claude-3-5-sonnet-20241022')",
+        "google/gemini-2.5-flash",
+        help="Model in format 'provider/model-name' (e.g., 'google/gemini-2.5-flash', 'openai/gpt-4o-mini', 'anthropic/claude-3-5-sonnet-20241022')",
     ),
     save_id: bool = typer.Option(True, help="Save batch ID to file"),
 ):
@@ -163,7 +197,7 @@ def create(
             "Examples: 'openai/gpt-4o-mini', 'anthropic/claude-3-5-sonnet-20241022'",
             err=True,
         )
-        raise typer.Exit(1)
+        raise typer.Exit(1) from None
 
     # Check API key
     if not check_api_key(provider):
@@ -181,6 +215,8 @@ def create(
             batch_id = create_openai_batch(model, messages_list)
         elif provider == "anthropic":
             batch_id = create_anthropic_batch(model, messages_list)
+        elif provider == "google":
+            batch_id = create_google_batch(model, messages_list)
         else:
             typer.echo(f"Unsupported provider: {provider}", err=True)
             raise typer.Exit(1)
@@ -198,7 +234,7 @@ def create(
             expected_results = get_expected_results()
             typer.echo(f"Expected results validated: {len(expected_results)} users")
             for i, user in enumerate(expected_results):
-                typer.echo(f"   {i+1}. {user.name}, age {user.age}")
+                typer.echo(f"   {i + 1}. {user.name}, age {user.age}")
 
             # Show how to check status
             typer.echo(f"Check status with:")
@@ -213,7 +249,7 @@ def create(
 
     except Exception as e:
         typer.echo(f"Error creating batch: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -222,13 +258,13 @@ def list_batches():
     typer.echo("Saved Batch IDs:")
     typer.echo("=" * 30)
 
-    providers = ["openai", "anthropic"]
+    providers = ["openai", "anthropic", "google"]
     found_any = False
 
     for provider in providers:
         filename = f"{provider}_batch_id.txt"
         if os.path.exists(filename):
-            with open(filename, "r") as f:
+            with open(filename) as f:
                 batch_id = f.read().strip()
 
             typer.echo(f"{provider.upper()}: {batch_id}")
@@ -249,7 +285,7 @@ def list_batches():
 @app.command()
 def fetch(
     provider: str = typer.Option(
-        help="Provider to fetch results from (openai, anthropic)"
+        help="Provider to fetch results from (openai, anthropic, google)"
     ),
     validate: bool = typer.Option(
         True, help="Validate extracted data against expected results"
@@ -263,8 +299,10 @@ def fetch(
 ):
     """Fetch and validate batch results from a provider"""
 
-    if provider not in ["openai", "anthropic"]:
-        typer.echo("Error: Provider must be one of: openai, anthropic", err=True)
+    if provider not in ["openai", "anthropic", "google"]:
+        typer.echo(
+            "Error: Provider must be one of: openai, anthropic, google", err=True
+        )
         raise typer.Exit(1)
 
     # Check if batch ID file exists
@@ -277,7 +315,7 @@ def fetch(
         raise typer.Exit(1)
 
     # Read batch ID
-    with open(filename, "r") as f:
+    with open(filename) as f:
         batch_id = f.read().strip()
 
     typer.echo(f"Fetching results for {provider.upper()} batch: {batch_id}")
@@ -295,13 +333,16 @@ def fetch(
                 results = fetch_openai_results(batch_id, validate)
             elif provider == "anthropic":
                 results = fetch_anthropic_results(batch_id, validate)
+            elif provider == "google":
+                results = fetch_google_results(batch_id, validate)
 
         if results:
             typer.echo(f"Successfully fetched and validated {len(results)} results!")
             if validate:
-                assert validate_results(
-                    results, provider.capitalize()
-                ), f"Test failed: {provider} results do not match expected results."
+                # Assert that the results match the expected results
+                assert validate_results(results, provider.capitalize()), (
+                    f"Test failed: {provider} results do not match expected results."
+                )
         else:
             typer.echo("No results available yet or batch still processing")
             if not poll:
@@ -309,22 +350,24 @@ def fetch(
 
     except AssertionError as ae:
         typer.echo(f"AssertionError: {ae}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from ae
     except Exception as e:
         typer.echo(f"Error fetching results: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
 def show_results(
     provider: str = typer.Option(
-        help="Provider to show detailed results from (openai, anthropic)"
+        help="Provider to show detailed results from (openai, anthropic, google)"
     ),
 ):
     """Show detailed parsed Pydantic objects from batch results"""
 
-    if provider not in ["openai", "anthropic"]:
-        typer.echo("Error: Provider must be one of: openai, anthropic", err=True)
+    if provider not in ["openai", "anthropic", "google"]:
+        typer.echo(
+            "Error: Provider must be one of: openai, anthropic, google", err=True
+        )
         raise typer.Exit(1)
 
     # Check if batch ID file exists
@@ -337,7 +380,7 @@ def show_results(
         raise typer.Exit(1)
 
     # Read batch ID
-    with open(filename, "r") as f:
+    with open(filename) as f:
         batch_id = f.read().strip()
 
     typer.echo(f"{provider.upper()} BATCH RESULTS")
@@ -354,25 +397,35 @@ def show_results(
             processor = BatchProcessor("openai/gpt-4o-mini", User)
         elif provider == "anthropic":
             processor = BatchProcessor("anthropic/claude-3-5-sonnet-20241022", User)
+        elif provider == "google":
+            processor = BatchProcessor("google/gemini-2.5-flash", User)
 
-        # Check status first
-        status = processor.get_batch_status(batch_id)
-        typer.echo(f"Status: {status['status']}")
+        # Get batch info using list_batches to find our batch
+        all_batches = processor.list_batches(limit=100)
+        batch_info = None
+        for batch in all_batches:
+            if batch.id == batch_id:
+                batch_info = batch
+                break
 
-        if provider == "openai" and status["status"] != "completed":
-            typer.echo(f"Batch not completed yet: {status['status']}")
+        if not batch_info:
+            typer.echo(f"Batch {batch_id} not found")
             return
-        elif provider == "anthropic" and status["status"] != "ended":
-            typer.echo(f"Batch not completed yet: {status['status']}")
+
+        typer.echo(f"Status: {batch_info.status.value}")
+        typer.echo(f"Raw Status: {batch_info.raw_status}")
+
+        if batch_info.status != BatchStatus.COMPLETED:
+            typer.echo(f"Batch not completed yet: {batch_info.status.value}")
             return
 
-        # Get all results
-        all_results = processor.retrieve_results(batch_id)
+        # Get all results using the new get_results method
+        all_results = processor.get_results(batch_id)
         typer.echo(f"Total results: {len(all_results)}")
 
         # Show each result with detailed info
         for i, result in enumerate(all_results):
-            typer.echo(f"\n--- Result {i+1} ---")
+            typer.echo(f"\n--- Result {i + 1} ---")
             typer.echo(f"Custom ID: {result.custom_id}")
             typer.echo(f"Success: {result.success}")
 
@@ -420,17 +473,17 @@ def show_results(
 
     except Exception as e:
         typer.echo(f"Error showing results: {e}", err=True)
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 def poll_for_results(
     provider: str, batch_id: str, validate: bool, max_wait: int
-) -> List[User]:
+) -> list[User]:
     """Poll for batch results until completion or timeout"""
     import time
 
     typer.echo(f"Polling {provider.upper()} batch every 30 seconds...")
-    typer.echo(f"Max wait time: {max_wait} seconds ({max_wait//60} minutes)")
+    typer.echo(f"Max wait time: {max_wait} seconds ({max_wait // 60} minutes)")
     typer.echo(f"Batch ID: {batch_id}")
     typer.echo()
 
@@ -447,6 +500,8 @@ def poll_for_results(
                 status, results = fetch_anthropic_results_with_status(
                     batch_id, validate
                 )
+            elif provider == "google":
+                status, results = fetch_google_results_with_status(batch_id, validate)
 
             if status == "completed" or status == "ended":
                 typer.echo(
@@ -483,26 +538,26 @@ def poll_for_results(
 
 def fetch_openai_results_with_status(
     batch_id: str, validate: bool
-) -> tuple[str, List[User]]:
+) -> tuple[str, list[User]]:
     """Fetch OpenAI batch results and return status"""
-    from openai import OpenAI
-
-    client = OpenAI()
-    batch = client.batches.retrieve(batch_id)
-
-    if batch.status != "completed":
-        return batch.status, []
-
-    # Get results
-    result_file_id = batch.output_file_id
-    if not result_file_id:
-        return "completed", []
-
-    file_response = client.files.content(result_file_id)
-    results_content = file_response.read().decode("utf-8")
-
     processor = BatchProcessor("openai/gpt-4o-mini", User)
-    all_results = processor.parse_results(results_content)
+
+    # Get batch info
+    all_batches = processor.list_batches(limit=100)
+    batch_info = None
+    for batch in all_batches:
+        if batch.id == batch_id:
+            batch_info = batch
+            break
+
+    if not batch_info:
+        return "not_found", []
+
+    if batch_info.status != BatchStatus.COMPLETED:
+        return batch_info.raw_status, []
+
+    # Get results using the new get_results method
+    all_results = processor.get_results(batch_id)
 
     successful_results = filter_successful(all_results)
     error_results = filter_errors(all_results)
@@ -523,35 +578,34 @@ def fetch_openai_results_with_status(
 
 def fetch_anthropic_results_with_status(
     batch_id: str, validate: bool
-) -> tuple[str, List[User]]:
+) -> tuple[str, list[User]]:
     """Fetch Anthropic batch results and return status"""
-    import anthropic
+    processor = BatchProcessor("anthropic/claude-3-5-sonnet-20241022", User)
 
-    client = anthropic.Anthropic()
+    # Get batch info
+    all_batches = processor.list_batches(limit=100)
+    batch_info = None
+    for batch in all_batches:
+        if batch.id == batch_id:
+            batch_info = batch
+            break
 
-    try:
-        batches_client = client.messages.batches
-    except AttributeError:
-        batches_client = client.beta.messages.batches
-
-    batch = batches_client.retrieve(batch_id)
+    if not batch_info:
+        return "not_found", []
 
     # Check for various terminal states
-    if batch.processing_status in ["failed", "cancelled", "expired"]:
-        return batch.processing_status, []
+    if batch_info.status in [
+        BatchStatus.FAILED,
+        BatchStatus.CANCELLED,
+        BatchStatus.EXPIRED,
+    ]:
+        return batch_info.raw_status, []
 
-    if batch.processing_status != "ended":
-        return batch.processing_status, []
+    if batch_info.status != BatchStatus.COMPLETED:
+        return batch_info.raw_status, []
 
-    # Get results
-    results = batches_client.results(batch_id)
-    results_lines = []
-    for result in results:
-        results_lines.append(result.model_dump_json())
-
-    results_content = "\n".join(results_lines)
-    processor = BatchProcessor("anthropic/claude-3-5-sonnet-20241022", User)
-    all_results = processor.parse_results(results_content)
+    # Get results using the new get_results method
+    all_results = processor.get_results(batch_id)
 
     successful_results = filter_successful(all_results)
     error_results = filter_errors(all_results)
@@ -570,20 +624,74 @@ def fetch_anthropic_results_with_status(
     return "ended", extracted_results
 
 
-def fetch_openai_results(batch_id: str, validate: bool) -> List[User]:
+def fetch_google_results_with_status(
+    batch_job_name: str, validate: bool
+) -> tuple[str, list[User]]:
+    """Fetch Google batch results and return status"""
+    try:
+        processor = BatchProcessor("google/gemini-2.5-flash", User)
+
+        # Get batch info
+        all_batches = processor.list_batches(limit=100)
+        batch_info = None
+        for batch in all_batches:
+            if batch.id == batch_job_name:
+                batch_info = batch
+                break
+
+        if not batch_info:
+            return "not_found", []
+
+        if batch_info.status != BatchStatus.COMPLETED:
+            return batch_info.raw_status, []
+
+        # Use BatchProcessor to get results
+        all_results = processor.get_results(batch_job_name)
+
+        successful_results = filter_successful(all_results)
+        error_results = filter_errors(all_results)
+        extracted_results = extract_results(all_results)
+
+        typer.echo(f"Successful extractions: {len(successful_results)}")
+        if error_results:
+            typer.echo(f"Failed extractions: {len(error_results)}")
+
+        if validate and extracted_results:
+            validate_results(extracted_results, "Google GenAI")
+
+        return "succeeded", extracted_results
+
+    except Exception as e:
+        typer.echo(f"Error fetching Google batch results: {e}")
+        return "error", []
+
+
+def fetch_openai_results(batch_id: str, validate: bool) -> list[User]:
     """Fetch OpenAI batch results using BatchProcessor"""
     processor = BatchProcessor("openai/gpt-4o-mini", User)
 
-    # Get batch status
-    status = processor.get_batch_status(batch_id)
-    typer.echo(f"Batch Status: {status['status']}")
+    # Get batch info
+    all_batches = processor.list_batches(limit=100)
+    batch_info = None
+    for batch in all_batches:
+        if batch.id == batch_id:
+            batch_info = batch
+            break
 
-    if status["status"] != "completed":
-        typer.echo(f"Batch is still {status['status']}. Please wait and try again.")
+    if not batch_info:
+        typer.echo(f"Batch {batch_id} not found")
         return []
 
-    # Retrieve and parse results
-    all_results = processor.retrieve_results(batch_id)
+    typer.echo(f"Batch Status: {batch_info.status.value}")
+
+    if batch_info.status != BatchStatus.COMPLETED:
+        typer.echo(
+            f"Batch is still {batch_info.status.value}. Please wait and try again."
+        )
+        return []
+
+    # Get results using the new get_results method
+    all_results = processor.get_results(batch_id)
 
     successful_results = filter_successful(all_results)
     error_results = filter_errors(all_results)
@@ -602,20 +710,32 @@ def fetch_openai_results(batch_id: str, validate: bool) -> List[User]:
     return extracted_results
 
 
-def fetch_anthropic_results(batch_id: str, validate: bool) -> List[User]:
+def fetch_anthropic_results(batch_id: str, validate: bool) -> list[User]:
     """Fetch Anthropic batch results using BatchProcessor"""
     processor = BatchProcessor("anthropic/claude-3-5-sonnet-20241022", User)
 
-    # Get batch status
-    status = processor.get_batch_status(batch_id)
-    typer.echo(f"Batch Status: {status['status']}")
+    # Get batch info
+    all_batches = processor.list_batches(limit=100)
+    batch_info = None
+    for batch in all_batches:
+        if batch.id == batch_id:
+            batch_info = batch
+            break
 
-    if status["status"] != "ended":
-        typer.echo(f"Batch is still {status['status']}. Please wait and try again.")
+    if not batch_info:
+        typer.echo(f"Batch {batch_id} not found")
         return []
 
-    # Retrieve and parse results
-    all_results = processor.retrieve_results(batch_id)
+    typer.echo(f"Batch Status: {batch_info.status.value}")
+
+    if batch_info.status != BatchStatus.COMPLETED:
+        typer.echo(
+            f"Batch is still {batch_info.status.value}. Please wait and try again."
+        )
+        return []
+
+    # Get results using the new get_results method
+    all_results = processor.get_results(batch_id)
 
     successful_results = filter_successful(all_results)
     error_results = filter_errors(all_results)
@@ -634,7 +754,53 @@ def fetch_anthropic_results(batch_id: str, validate: bool) -> List[User]:
     return extracted_results
 
 
-def validate_results(results: List[User], provider_name: str) -> bool:
+def fetch_google_results(batch_job_name: str, validate: bool) -> list[User]:
+    """Fetch Google batch results using BatchProcessor"""
+    try:
+        processor = BatchProcessor("google/gemini-2.5-flash", User)
+
+        # Get batch info
+        all_batches = processor.list_batches(limit=100)
+        batch_info = None
+        for batch in all_batches:
+            if batch.id == batch_job_name:
+                batch_info = batch
+                break
+
+        if not batch_info:
+            typer.echo(f"Batch {batch_job_name} not found")
+            return []
+
+        typer.echo(f"Batch Status: {batch_info.status.value}")
+
+        if batch_info.status != BatchStatus.COMPLETED:
+            typer.echo(
+                f"Batch is still {batch_info.status.value}. Please wait and try again."
+            )
+            return []
+
+        # Get results using the new get_results method
+        all_results = processor.get_results(batch_job_name)
+
+        successful_results = filter_successful(all_results)
+        error_results = filter_errors(all_results)
+        extracted_results = extract_results(all_results)
+
+        typer.echo(f"Successful extractions: {len(successful_results)}")
+        if error_results:
+            typer.echo(f"Failed extractions: {len(error_results)}")
+
+        if validate and extracted_results:
+            validate_results(extracted_results, "Google GenAI")
+
+        return extracted_results
+
+    except Exception as e:
+        typer.echo(f"Error fetching Google batch results: {e}")
+        return []
+
+
+def validate_results(results: list[User], provider_name: str) -> bool:
     """Validate extracted results against expected results"""
     expected_results = get_expected_results()
 
@@ -652,9 +818,9 @@ def validate_results(results: List[User], provider_name: str) -> bool:
     all_correct = True
     for i, (actual, expected) in enumerate(zip(results_sorted, expected_sorted)):
         if actual.name == expected.name and actual.age == expected.age:
-            typer.echo(f"{i+1}. {actual.name}, age {actual.age} - CORRECT")
+            typer.echo(f"{i + 1}. {actual.name}, age {actual.age} - CORRECT")
         else:
-            typer.echo(f"{i+1}. Expected: {expected.name}, age {expected.age}")
+            typer.echo(f"{i + 1}. Expected: {expected.name}, age {expected.age}")
             typer.echo(f"    Got: {actual.name}, age {actual.age}")
             all_correct = False
 
@@ -683,13 +849,11 @@ def help():
     typer.echo()
 
     typer.echo("Usage Examples:")
-    typer.echo("  # Create batch job (OpenAI)")
-    typer.echo("  python run_batch_test.py create --model 'openai/gpt-4o-mini'")
+    typer.echo("  # Create batch job (default: Google Gemini 2.5 Flash)")
+    typer.echo("  python run_batch_test.py create")
     typer.echo()
-    typer.echo("  # Create batch job with Anthropic")
-    typer.echo(
-        "  python run_batch_test.py create --model 'anthropic/claude-3-5-sonnet-20241022'"
-    )
+    typer.echo("  # Create batch job with specific model")
+    typer.echo("  python run_batch_test.py create --model 'openai/gpt-4o-mini'")
     typer.echo()
     typer.echo("  # List saved batch IDs")
     typer.echo("  python run_batch_test.py list-batches")
@@ -726,6 +890,12 @@ def list_models():
     typer.echo("  • anthropic/claude-3-5-sonnet-20241022")
     typer.echo("  • anthropic/claude-3-opus-20240229")
     typer.echo("  • anthropic/claude-3-haiku-20240307")
+    typer.echo()
+
+    typer.echo("Google:")
+    typer.echo("  • google/gemini-2.5-flash")
+    typer.echo("  • google/gemini-2.0-flash-001")
+    typer.echo("  • google/gemini-pro")
     typer.echo()
 
     typer.echo("Usage: python run_batch_test.py create --model 'provider/model-name'")
