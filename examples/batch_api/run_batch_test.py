@@ -298,9 +298,7 @@ def fetch(
     """Fetch and validate batch results from a provider"""
 
     if provider not in ["openai", "anthropic"]:
-        typer.echo(
-            "Error: Provider must be one of: openai, anthropic", err=True
-        )
+        typer.echo("Error: Provider must be one of: openai, anthropic", err=True)
         raise typer.Exit(1)
 
     # Check if batch ID file exists
@@ -336,9 +334,9 @@ def fetch(
             typer.echo(f"Successfully fetched and validated {len(results)} results!")
             if validate:
                 # Assert that the results match the expected results
-                assert validate_results(
-                    results, provider.capitalize()
-                ), f"Test failed: {provider} results do not match expected results."
+                assert validate_results(results, provider.capitalize()), (
+                    f"Test failed: {provider} results do not match expected results."
+                )
         else:
             typer.echo("No results available yet or batch still processing")
             if not poll:
@@ -361,9 +359,7 @@ def show_results(
     """Show detailed parsed Pydantic objects from batch results"""
 
     if provider not in ["openai", "anthropic"]:
-        typer.echo(
-            "Error: Provider must be one of: openai, anthropic", err=True
-        )
+        typer.echo("Error: Provider must be one of: openai, anthropic", err=True)
         raise typer.Exit(1)
 
     # Check if batch ID file exists
@@ -617,6 +613,7 @@ def fetch_anthropic_results_with_status(
 
 
 d
+
 
 def fetch_openai_results(batch_id: str, validate: bool) -> list[User]:
     """Fetch OpenAI batch results using BatchProcessor"""
