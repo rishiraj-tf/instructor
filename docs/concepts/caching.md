@@ -22,8 +22,9 @@ class User(BaseModel):
 first = client.create(messages=[{"role": "user", "content": "Hi."}], response_model=User)
 second = client.create(messages=[{"role": "user", "content": "Hi."}], response_model=User)
 assert first.name == second.name    # second call was served from cache
+```
 
-+`cache_ttl` per-call override
+### `cache_ttl` per-call override
 
 Pass `cache_ttl=<seconds>` alongside `cache=` if you want a result to
 expire automatically:
