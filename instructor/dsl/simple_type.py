@@ -110,14 +110,14 @@ def is_simple_type(
                 # For simple list with basic types, also return True
                 if inner_arg in {str, int, float, bool}:
                     return True
-                
+
                 # Check if inner type is a BaseModel - if so, not a simple type
                 try:
                     if isclass(inner_arg) and issubclass(inner_arg, BaseModel):
                         return False
                 except TypeError:
                     pass
-            
+
             # If no args or unknown pattern, treat as simple list
             return len(args) == 0
 
