@@ -5,9 +5,12 @@ import instructor
 from instructor.models import KnownModelName
 from instructor.cache import BaseCache
 import warnings
+import logging
 
 # Type alias for the return type
 InstructorType = Union[Instructor, AsyncInstructor]
+
+logger = logging.getLogger("instructor.auto_client")
 
 
 # List of supported providers
@@ -217,11 +220,12 @@ def from_provider(
                 **kwargs,
             )
         except ImportError:
-            import_err = ImportError(
+            from instructor.exceptions import ConfigurationError
+
+            raise ConfigurationError(
                 "The anthropic package is required to use the Anthropic provider. "
                 "Install it with `pip install anthropic`."
-            )
-            raise import_err from None
+            ) from None
 
     elif provider == "google":
         try:
@@ -257,11 +261,12 @@ def from_provider(
             else:
                 return from_genai(client, model=model_name, **kwargs)  # type: ignore
         except ImportError:
-            import_err = ImportError(
+            from instructor.exceptions import ConfigurationError
+
+            raise ConfigurationError(
                 "The google-genai package is required to use the Google provider. "
                 "Install it with `pip install google-genai`."
-            )
-            raise import_err from None
+            ) from None
 
     elif provider == "mistral":
         try:
@@ -282,11 +287,12 @@ def from_provider(
             else:
                 return from_mistral(client, model=model_name, **kwargs)
         except ImportError:
-            import_err = ImportError(
+            from instructor.exceptions import ConfigurationError
+
+            raise ConfigurationError(
                 "The mistralai package is required to use the Mistral provider. "
                 "Install it with `pip install mistralai`."
-            )
-            raise import_err from None
+            ) from None
 
     elif provider == "cohere":
         try:
@@ -296,11 +302,12 @@ def from_provider(
             client = cohere.AsyncClient() if async_client else cohere.Client()
             return from_cohere(client, **kwargs)
         except ImportError:
-            import_err = ImportError(
+            from instructor.exceptions import ConfigurationError
+
+            raise ConfigurationError(
                 "The cohere package is required to use the Cohere provider. "
                 "Install it with `pip install cohere`."
-            )
-            raise import_err from None
+            ) from None
 
     elif provider == "perplexity":
         try:
@@ -329,11 +336,12 @@ def from_provider(
             )
             return from_perplexity(client, model=model_name, **kwargs)
         except ImportError:
-            import_err = ImportError(
+            from instructor.exceptions import ConfigurationError
+
+            raise ConfigurationError(
                 "The openai package is required to use the Perplexity provider. "
                 "Install it with `pip install openai`."
-            )
-            raise import_err from None
+            ) from None
 
     elif provider == "groq":
         try:
@@ -343,11 +351,12 @@ def from_provider(
             client = groq.AsyncGroq() if async_client else groq.Groq()
             return from_groq(client, model=model_name, **kwargs)
         except ImportError:
-            import_err = ImportError(
+            from instructor.exceptions import ConfigurationError
+
+            raise ConfigurationError(
                 "The groq package is required to use the Groq provider. "
                 "Install it with `pip install groq`."
-            )
-            raise import_err from None
+            ) from None
 
     elif provider == "writer":
         try:
@@ -357,25 +366,74 @@ def from_provider(
             client = AsyncWriter() if async_client else Writer()
             return from_writer(client, model=model_name, **kwargs)
         except ImportError:
-            import_err = ImportError(
+            from instructor.exceptions import ConfigurationError
+
+            raise ConfigurationError(
                 "The writerai package is required to use the Writer provider. "
                 "Install it with `pip install writer-sdk`."
-            )
-            raise import_err from None
+            ) from None
 
     elif provider == "bedrock":
         try:
+            import os
             import boto3
             from instructor import from_bedrock
 
-            client = boto3.client("bedrock-runtime")
-            return from_bedrock(client, **kwargs)
+            # Get AWS configuration from environment or kwargs
+            if "region" in kwargs:
+                region = kwargs.pop("region")
+            else:
+                logger.debug(
+                    "AWS_DEFAULT_REGION is not set. Using default region us-east-1"
+                )
+                region = os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+
+            # Extract AWS-specific parameters
+            # Dictionary to collect AWS credentials and session parameters for boto3 client
+            aws_kwargs = {}
+            for key in [
+                "aws_access_key_id",
+                "aws_secret_access_key",
+                "aws_session_token",
+            ]:
+                if key in kwargs:
+                    aws_kwargs[key] = kwargs.pop(key)
+                elif key.upper() in os.environ:
+                    logger.debug(f"Using {key.upper()} from environment variable")
+                    aws_kwargs[key] = os.environ[key.upper()]
+
+            # Add region to client configuration
+            aws_kwargs["region_name"] = region
+
+            # Create bedrock-runtime client
+            client = boto3.client("bedrock-runtime", **aws_kwargs)
+
+            # Determine default mode based on model
+            if mode is None:
+                # Anthropic models (Claude) support tools, others use JSON
+                if model_name and (
+                    "anthropic" in model_name.lower() or "claude" in model_name.lower()
+                ):
+                    default_mode = instructor.Mode.BEDROCK_TOOLS
+                else:
+                    default_mode = instructor.Mode.BEDROCK_JSON
+            else:
+                default_mode = mode
+
+            return from_bedrock(
+                client,
+                mode=default_mode,
+                async_client=async_client,
+                _async=async_client,  # for backward compatibility
+                **kwargs,
+            )
         except ImportError:
-            import_err = ImportError(
+            from instructor.exceptions import ConfigurationError
+
+            raise ConfigurationError(
                 "The boto3 package is required to use the AWS Bedrock provider. "
                 "Install it with `pip install boto3`."
-            )
-            raise import_err from None
+            ) from None
 
     elif provider == "cerebras":
         try:
@@ -385,11 +443,12 @@ def from_provider(
             client = AsyncCerebras() if async_client else Cerebras()
             return from_cerebras(client, model=model_name, **kwargs)
         except ImportError:
-            import_err = ImportError(
+            from instructor.exceptions import ConfigurationError
+
+            raise ConfigurationError(
                 "The cerebras package is required to use the Cerebras provider. "
                 "Install it with `pip install cerebras`."
-            )
-            raise import_err from None
+            ) from None
 
     elif provider == "fireworks":
         try:
@@ -399,11 +458,12 @@ def from_provider(
             client = AsyncFireworks() if async_client else Fireworks()
             return from_fireworks(client, model=model_name, **kwargs)
         except ImportError:
-            import_err = ImportError(
+            from instructor.exceptions import ConfigurationError
+
+            raise ConfigurationError(
                 "The fireworks-ai package is required to use the Fireworks provider. "
                 "Install it with `pip install fireworks-ai`."
-            )
-            raise import_err from None
+            ) from None
 
     elif provider == "vertexai":
         warnings.warn(
@@ -442,11 +502,12 @@ def from_provider(
             else:
                 return from_genai(client, **kwargs)  # type: ignore
         except ImportError:
-            import_err = ImportError(
+            from instructor.exceptions import ConfigurationError
+
+            raise ConfigurationError(
                 "The google-genai package is required to use the VertexAI provider. "
                 "Install it with `pip install google-genai`."
-            )
-            raise import_err from None
+            ) from None
 
     elif provider == "generative-ai":
         warnings.warn(
@@ -469,11 +530,12 @@ def from_provider(
             else:
                 return from_genai(client, model=model_name, **kwargs)  # type: ignore
         except ImportError:
-            import_err = ImportError(
+            from instructor.exceptions import ConfigurationError
+
+            raise ConfigurationError(
                 "The google-genai package is required to use the Google GenAI provider. "
                 "Install it with `pip install google-genai`."
-            )
-            raise import_err from None
+            ) from None
 
     elif provider == "ollama":
         try:
