@@ -28,6 +28,7 @@ supported_providers = [
     "writer",
     "bedrock",
     "cerebras",
+    "deepseek",
     "fireworks",
     "ollama",
     "xai",
@@ -804,6 +805,60 @@ def from_provider(
 
             raise ConfigurationError(
                 "The openai package is required to use the Ollama provider. "
+                "Install it with `pip install openai`."
+            ) from None
+        except Exception as e:
+            logger.error(
+                "Error initializing %s client: %s",
+                provider,
+                e,
+                exc_info=True,
+                extra={**provider_info, "status": "error"},
+            )
+            raise
+
+    elif provider == "deepseek":
+        try:
+            import openai
+            from instructor import from_openai
+            import os
+
+            # Get API key from kwargs or environment
+            api_key = kwargs.pop("api_key", os.environ.get("DEEPSEEK_API_KEY"))
+            
+            if not api_key:
+                from instructor.exceptions import ConfigurationError
+
+                raise ConfigurationError(
+                    "DEEPSEEK_API_KEY is not set. "
+                    "Set it with `export DEEPSEEK_API_KEY=<your-api-key>` or pass it as kwarg api_key=<your-api-key>"
+                )
+
+            # DeepSeek uses OpenAI-compatible API
+            base_url = kwargs.pop("base_url", "https://api.deepseek.com")
+            
+            client = (
+                openai.AsyncOpenAI(api_key=api_key, base_url=base_url)
+                if async_client
+                else openai.OpenAI(api_key=api_key, base_url=base_url)
+            )
+            
+            result = from_openai(
+                client,
+                model=model_name,
+                mode=mode if mode else instructor.Mode.TOOLS,
+                **kwargs,
+            )
+            logger.info(
+                "Client initialized",
+                extra={**provider_info, "status": "success"},
+            )
+            return result
+        except ImportError:
+            from instructor.exceptions import ConfigurationError
+
+            raise ConfigurationError(
+                "The openai package is required to use the DeepSeek provider. "
                 "Install it with `pip install openai`."
             ) from None
         except Exception as e:

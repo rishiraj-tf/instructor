@@ -55,6 +55,7 @@ class Provider(Enum):
     GENAI = "genai"
     DATABRICKS = "databricks"
     CEREBRAS = "cerebras"
+    DEEPSEEK = "deepseek"
     FIREWORKS = "fireworks"
     WRITER = "writer"
     XAI = "xai"
@@ -87,6 +88,8 @@ def get_provider(base_url: str) -> Provider:
         return Provider.GEMINI
     elif "databricks" in str(base_url):
         return Provider.DATABRICKS
+    elif "deepseek" in str(base_url):
+        return Provider.DEEPSEEK
     elif "vertexai" in str(base_url):
         return Provider.VERTEXAI
     elif "writer" in str(base_url):

@@ -28,6 +28,7 @@ PROVIDERS = [
     "groq/llama-3.1-8b-instant",
     "writer/palmyra-x5",
     "cerebras/llama-4-scout-17b-16e-instruct",
+    "deepseek/deepseek-chat",
     "fireworks/accounts/fireworks/models/llama4-maverick-instruct-basic",
     "vertexai/gemini-1.5-flash",
 ]
