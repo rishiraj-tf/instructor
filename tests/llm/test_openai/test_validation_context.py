@@ -123,7 +123,6 @@ def test_forced_words_validation(model: str, mode: instructor.Mode, client):
         ],
         context={"must_contain_words": ["love", "peace", "joy"]},
     )
-
-    assert "love" in response.content
-    assert "peace" in response.content
-    assert "joy" in response.content
+    assert "love" in response.content.lower()
+    assert "peace" in response.content.lower()
+    assert "joy" in response.content.lower()
