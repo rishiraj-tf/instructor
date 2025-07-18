@@ -54,8 +54,31 @@ def handle_cohere_modes(new_kwargs: dict[str, Any]) -> tuple[None, dict[str, Any
 
 
 def handle_cohere_json_schema(
-    response_model: type[Any], new_kwargs: dict[str, Any]
-) -> tuple[type[Any], dict[str, Any]]:
+    response_model: type[Any] | None, new_kwargs: dict[str, Any]
+) -> tuple[type[Any] | None, dict[str, Any]]:
+    """
+    Handle Cohere JSON schema mode.
+    
+    When response_model is None:
+        - Converts messages from OpenAI format to Cohere format (message + chat_history)
+        - No schema is added to the request
+        
+    When response_model is provided:
+        - Converts messages from OpenAI format to Cohere format
+        - Adds the model's JSON schema to response_format
+        
+    Kwargs modifications:
+    - Removes: "messages" (converted to message + chat_history)
+    - Adds: "message" (last message content)
+    - Adds: "chat_history" (all messages except last)
+    - Modifies: "model" (if "model_name" exists, renames to "model")
+    - Removes: "strict"
+    - Adds: "response_format" (with JSON schema) - only when response_model provided
+    """
+    if response_model is None:
+        # Just handle message conversion
+        return handle_cohere_modes(new_kwargs)
+    
     new_kwargs["response_format"] = {
         "type": "json_object",
         "schema": response_model.model_json_schema(),
@@ -66,8 +89,30 @@ def handle_cohere_json_schema(
 
 
 def handle_cohere_tools(
-    response_model: type[Any], new_kwargs: dict[str, Any]
-) -> tuple[type[Any], dict[str, Any]]:
+    response_model: type[Any] | None, new_kwargs: dict[str, Any]
+) -> tuple[type[Any] | None, dict[str, Any]]:
+    """
+    Handle Cohere tools mode.
+    
+    When response_model is None:
+        - Converts messages from OpenAI format to Cohere format (message + chat_history)
+        - No tools or schema instructions are added
+        - Allows for unstructured responses from Cohere
+        
+    When response_model is provided:
+        - Converts messages from OpenAI format to Cohere format
+        - Prepends extraction instructions to the chat history
+        - Includes the model's JSON schema in the instructions
+        - The model is instructed to extract a valid object matching the schema
+        
+    Kwargs modifications:
+    - All modifications from handle_cohere_modes (message format conversion)
+    - Modifies: "chat_history" (prepends extraction instruction) - only when response_model provided
+    """
+    if response_model is None:
+        # Just handle message conversion
+        return handle_cohere_modes(new_kwargs)
+    
     _, new_kwargs = handle_cohere_modes(new_kwargs)
 
     instruction = f"""\
