@@ -17,9 +17,9 @@ pdf_path = os.path.join(curr_file, "../../assets/invoice.pdf")
 pdf_base64 = base64.b64encode(open(pdf_path, "rb").read()).decode("utf-8")
 pdf_base64_string = f"data:application/pdf;base64,{pdf_base64}"
 
-models = ["gpt-4.1-mini"]
+models = ["gpt-4.1-nano"]
 modes = [
-    instructor.Mode.JSON_SCHEMA,
+    instructor.Mode.TOOLS,
 ]
 
 
