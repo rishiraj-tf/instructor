@@ -1,8 +1,6 @@
 import importlib.util
 
 from .mode import Mode
-from .process_response import handle_response_model
-from .distil import FinetuneFormat, Instructions
 from .multimodal import Image, Audio
 from .dsl import (
     CitationMixin,
@@ -13,8 +11,12 @@ from .dsl import (
     openai_moderation,
 )
 from .function_calls import OpenAISchema, openai_schema
+from .schema_utils import (
+    generate_openai_schema,
+    generate_anthropic_schema,
+    generate_gemini_schema,
+)
 from .patch import apatch, patch
-from .process_response import handle_parallel_model
 from .client import (
     Instructor,
     AsyncInstructor,
@@ -24,6 +26,7 @@ from .client import (
 )
 from .auto_client import from_provider
 from .batch import BatchProcessor, BatchRequest, BatchJob
+from .distil import FinetuneFormat, Instructions
 
 __all__ = [
     "Instructor",
@@ -40,18 +43,19 @@ __all__ = [
     "Maybe",
     "Partial",
     "openai_schema",
+    "generate_openai_schema",
+    "generate_anthropic_schema",
+    "generate_gemini_schema",
     "Mode",
     "patch",
     "apatch",
-    "llm_validator",
-    "openai_moderation",
     "FinetuneFormat",
     "Instructions",
-    "handle_parallel_model",
-    "handle_response_model",
     "BatchProcessor",
     "BatchRequest",
     "BatchJob",
+    "llm_validator",
+    "openai_moderation",
 ]
 
 
