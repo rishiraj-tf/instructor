@@ -24,6 +24,12 @@ def reask_tools(
     response: Any,
     exception: Exception,
 ):
+    """
+    Handle reask for OpenAI tools mode when validation fails.
+
+    Kwargs modifications:
+    - Adds: "messages" (tool response messages indicating validation errors)
+    """
     kwargs = kwargs.copy()
     reask_msgs = [dump_message(response.choices[0].message)]
     for tool_call in response.choices[0].message.tool_calls:
@@ -46,6 +52,12 @@ def reask_responses_tools(
     response: Any,
     exception: Exception,
 ):
+    """
+    Handle reask for OpenAI responses tools mode when validation fails.
+
+    Kwargs modifications:
+    - Adds: "messages" (user messages with validation errors)
+    """
     kwargs = kwargs.copy()
 
     reask_messages = []
@@ -68,6 +80,12 @@ def reask_md_json(
     response: Any,
     exception: Exception,
 ):
+    """
+    Handle reask for OpenAI JSON modes when validation fails.
+
+    Kwargs modifications:
+    - Adds: "messages" (user message requesting JSON correction)
+    """
     kwargs = kwargs.copy()
     reask_msgs = [dump_message(response.choices[0].message)]
     reask_msgs.append(
@@ -85,6 +103,12 @@ def reask_default(
     response: Any,
     exception: Exception,
 ):
+    """
+    Handle reask for OpenAI default mode when validation fails.
+
+    Kwargs modifications:
+    - Adds: "messages" (user message requesting function correction)
+    """
     kwargs = kwargs.copy()
     reask_msgs = [dump_message(response.choices[0].message)]
     reask_msgs.append(
@@ -103,6 +127,37 @@ def reask_default(
 def handle_parallel_tools(
     response_model: type[Any], new_kwargs: dict[str, Any]
 ) -> tuple[type[Any], dict[str, Any]]:
+    """
+    Handle OpenAI parallel tools mode for concurrent function calls.
+
+    This mode enables making multiple independent function calls in a single request,
+    useful for batch processing or when you need to extract multiple structured outputs
+    simultaneously. The response_model should be a list/iterable type or use the
+    ParallelModel wrapper.
+
+    Example usage:
+        # Define models for parallel extraction
+        class PersonInfo(BaseModel):
+            name: str
+            age: int
+
+        class EventInfo(BaseModel):
+            date: str
+            location: str
+
+        # Use with PARALLEL_TOOLS mode
+        result = client.chat.completions.create(
+            model="gpt-4",
+            response_model=[PersonInfo, EventInfo],
+            mode=instructor.Mode.PARALLEL_TOOLS,
+            messages=[{"role": "user", "content": "Extract person and event info..."}]
+        )
+
+    Kwargs modifications:
+    - Adds: "tools" (multiple function schemas from parallel model)
+    - Adds: "tool_choice" ("auto" to allow model to choose which tools to call)
+    - Validates: stream=False (streaming not supported in parallel mode)
+    """
     if new_kwargs.get("stream", False):
         raise ConfigurationError(
             "stream=True is not supported when using PARALLEL_TOOLS mode"
@@ -117,7 +172,7 @@ def handle_functions(
 ) -> tuple[type[Any] | None, dict[str, Any]]:
     """
     Handle OpenAI functions mode (deprecated).
-    
+
     Kwargs modifications:
     - When response_model is None: No modifications
     - When response_model is provided:
@@ -125,10 +180,10 @@ def handle_functions(
       - Adds: "function_call" (forced function call)
     """
     Mode.warn_mode_functions_deprecation()
-    
+
     if response_model is None:
         return None, new_kwargs
-        
+
     new_kwargs["functions"] = [generate_openai_schema(response_model)]
     new_kwargs["function_call"] = {
         "name": generate_openai_schema(response_model)["name"]
@@ -141,7 +196,7 @@ def handle_tools_strict(
 ) -> tuple[type[Any] | None, dict[str, Any]]:
     """
     Handle OpenAI strict tools mode.
-    
+
     Kwargs modifications:
     - When response_model is None: No modifications
     - When response_model is provided:
@@ -150,7 +205,7 @@ def handle_tools_strict(
     """
     if response_model is None:
         return None, new_kwargs
-        
+
     response_model_schema = pydantic_function_tool(response_model)
     response_model_schema["function"]["strict"] = True
     new_kwargs["tools"] = [response_model_schema]
@@ -166,7 +221,7 @@ def handle_tools(
 ) -> tuple[type[Any] | None, dict[str, Any]]:
     """
     Handle OpenAI tools mode.
-    
+
     Kwargs modifications:
     - When response_model is None: No modifications
     - When response_model is provided:
@@ -175,7 +230,7 @@ def handle_tools(
     """
     if response_model is None:
         return None, new_kwargs
-        
+
     new_kwargs["tools"] = [
         {
             "type": "function",
@@ -190,8 +245,26 @@ def handle_tools(
 
 
 def handle_responses_tools(
-    response_model: type[Any], new_kwargs: dict[str, Any]
-) -> tuple[type[Any], dict[str, Any]]:
+    response_model: type[Any] | None, new_kwargs: dict[str, Any]
+) -> tuple[type[Any] | None, dict[str, Any]]:
+    """
+    Handle OpenAI responses tools mode.
+
+    Kwargs modifications:
+    - When response_model is None: No modifications
+    - When response_model is provided:
+      - Adds: "tools" (list with function schema)
+      - Adds: "tool_choice" (forced function call)
+      - Adds: "max_output_tokens" (converted from max_tokens)
+    """
+    # Handle max_tokens to max_output_tokens conversion for RESPONSES_TOOLS modes
+    if new_kwargs.get("max_tokens") is not None:
+        new_kwargs["max_output_tokens"] = new_kwargs.pop("max_tokens")
+
+    # If response_model is None, just return without setting up tools
+    if response_model is None:
+        return None, new_kwargs
+
     schema = pydantic_function_tool(response_model)
     del schema["function"]["strict"]
 
@@ -221,15 +294,31 @@ def handle_responses_tools(
         "type": "function",
         "name": generate_openai_schema(response_model)["name"],
     }
-    if new_kwargs.get("max_tokens") is not None:
-        new_kwargs["max_output_tokens"] = new_kwargs.pop("max_tokens")
 
     return response_model, new_kwargs
 
 
 def handle_responses_tools_with_inbuilt_tools(
-    response_model: type[Any], new_kwargs: dict[str, Any]
-) -> tuple[type[Any], dict[str, Any]]:
+    response_model: type[Any] | None, new_kwargs: dict[str, Any]
+) -> tuple[type[Any] | None, dict[str, Any]]:
+    """
+    Handle OpenAI responses tools with inbuilt tools mode.
+
+    Kwargs modifications:
+    - When response_model is None: No modifications
+    - When response_model is provided:
+      - Adds: "tools" (list with function schema)
+      - Adds: "tool_choice" (forced function call)
+      - Adds: "max_output_tokens" (converted from max_tokens)
+    """
+    # Handle max_tokens to max_output_tokens conversion for RESPONSES_TOOLS modes
+    if new_kwargs.get("max_tokens") is not None:
+        new_kwargs["max_output_tokens"] = new_kwargs.pop("max_tokens")
+
+    # If response_model is None, just return without setting up tools
+    if response_model is None:
+        return None, new_kwargs
+
     schema = pydantic_function_tool(response_model)
     del schema["function"]["strict"]
 
@@ -256,9 +345,6 @@ def handle_responses_tools_with_inbuilt_tools(
     else:
         new_kwargs["tools"].append(tool_definition)
 
-    if new_kwargs.get("max_tokens") is not None:
-        new_kwargs["max_output_tokens"] = new_kwargs.pop("max_tokens")
-
     return response_model, new_kwargs
 
 
@@ -267,7 +353,7 @@ def handle_json_o1(
 ) -> tuple[type[Any] | None, dict[str, Any]]:
     """
     Handle OpenAI o1 JSON mode.
-    
+
     Kwargs modifications:
     - When response_model is None: No modifications
     - When response_model is provided:
@@ -306,7 +392,7 @@ def handle_json_modes(
 ) -> tuple[type[Any] | None, dict[str, Any]]:
     """
     Handle OpenAI JSON modes (JSON, MD_JSON, JSON_SCHEMA).
-    
+
     Kwargs modifications:
     - When response_model is None: No modifications
     - When response_model is provided:
@@ -316,7 +402,7 @@ def handle_json_modes(
     """
     if response_model is None:
         return None, new_kwargs
-        
+
     message = dedent(
         f"""
         As a genius expert, your task is to understand the content and provide
@@ -370,6 +456,12 @@ def handle_json_modes(
 def handle_openrouter_structured_outputs(
     response_model: type[Any], new_kwargs: dict[str, Any]
 ) -> tuple[type[Any], dict[str, Any]]:
+    """
+    Handle OpenRouter structured outputs mode.
+
+    Kwargs modifications:
+    - Adds: "response_format" (json_schema with strict mode enabled)
+    """
     schema = response_model.model_json_schema()
     schema["additionalProperties"] = False
     new_kwargs["response_format"] = {

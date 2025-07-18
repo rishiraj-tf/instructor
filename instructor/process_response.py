@@ -328,18 +328,6 @@ def handle_response_model(
 
     # Handle message conversion for modes that don't already handle it
     if "messages" in new_kwargs:
-        # Handle special case for RESPONSES_TOOLS modes
-        if (
-            response_model is None
-            and mode
-            in {
-                Mode.RESPONSES_TOOLS,
-                Mode.RESPONSES_TOOLS_WITH_INBUILT_TOOLS,
-            }
-            and new_kwargs.get("max_tokens")
-        ):
-            new_kwargs["max_output_tokens"] = new_kwargs.pop("max_tokens")
-
         new_kwargs["messages"] = convert_messages(
             new_kwargs["messages"],
             mode,
