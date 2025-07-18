@@ -3,7 +3,11 @@ from pydantic import AfterValidator, BaseModel, Field
 import pytest
 import instructor
 from itertools import product
-from .util import models, modes
+
+models = ["gpt-4.1-mini"]
+modes = [
+    instructor.Mode.TOOLS,
+]
 
 
 def uppercase_validator(v: str):

@@ -3,7 +3,6 @@ from instructor.multimodal import Image, Audio
 import instructor
 from pydantic import Field, BaseModel
 from itertools import product
-from .util import models, modes
 import requests
 from pathlib import Path
 import base64
@@ -17,6 +16,11 @@ curr_file = os.path.dirname(__file__)
 pdf_path = os.path.join(curr_file, "../../assets/invoice.pdf")
 pdf_base64 = base64.b64encode(open(pdf_path, "rb").read()).decode("utf-8")
 pdf_base64_string = f"data:application/pdf;base64,{pdf_base64}"
+
+models = ["gpt-4.1-mini"]
+modes = [
+    instructor.Mode.JSON_SCHEMA,
+]
 
 
 class LineItem(BaseModel):
