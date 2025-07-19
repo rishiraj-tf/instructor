@@ -7,15 +7,23 @@ from instructor.mode import Mode
 from pydantic import BaseModel
 from typing_extensions import ParamSpec
 
-# Import reask functions from provider-specific modules
+# Import reask functions organized by provider (matching process_response.py structure)
+
+# OpenAI reask functions
+from instructor.utils.openai import (
+    reask_default,
+    reask_md_json,
+    reask_responses_tools,
+    reask_tools,
+)
+
+# Anthropic reask functions
 from instructor.utils.anthropic import (
     reask_anthropic_json,
     reask_anthropic_tools,
 )
-from instructor.utils.bedrock import reask_bedrock_json
-from instructor.utils.cerebras import reask_cerebras_tools
-from instructor.utils.cohere import reask_cohere_tools
-from instructor.utils.fireworks import reask_fireworks_json, reask_fireworks_tools
+
+# Google/Gemini reask functions
 from instructor.utils.google import (
     reask_gemini_json,
     reask_gemini_tools,
@@ -24,18 +32,33 @@ from instructor.utils.google import (
     reask_vertexai_json,
     reask_vertexai_tools,
 )
+
+# Mistral reask functions
 from instructor.utils.mistral import (
     reask_mistral_structured_outputs,
     reask_mistral_tools,
 )
-from instructor.utils.openai import (
-    reask_default,
-    reask_md_json,
-    reask_responses_tools,
-    reask_tools,
-)
-from instructor.utils.perplexity import reask_perplexity_json
+
+# Cohere reask functions
+from instructor.utils.cohere import reask_cohere_tools
+
+# Cerebras reask functions
+from instructor.utils.cerebras import reask_cerebras_tools
+
+# Fireworks reask functions
+from instructor.utils.fireworks import reask_fireworks_json, reask_fireworks_tools
+
+# Writer reask functions
 from instructor.utils.writer import reask_writer_json, reask_writer_tools
+
+# Bedrock reask functions
+from instructor.utils.bedrock import reask_bedrock_json, reask_bedrock_tools
+
+# Perplexity reask functions
+from instructor.utils.perplexity import reask_perplexity_json
+
+# XAI reask functions
+from instructor.utils.xai import reask_xai_json, reask_xai_tools
 
 logger = logging.getLogger("instructor")
 
@@ -54,49 +77,61 @@ def handle_reask_kwargs(
     # Create a shallow copy of kwargs to avoid modifying the original
     kwargs_copy = kwargs.copy()
 
-    # Use a more efficient mapping approach with mode groupings to reduce lookup time
-    # Group similar modes that use the same reask function
-    if mode in {Mode.ANTHROPIC_TOOLS, Mode.ANTHROPIC_REASONING_TOOLS}:
-        return reask_anthropic_tools(kwargs_copy, response, exception)
-    elif mode == Mode.ANTHROPIC_JSON:
-        return reask_anthropic_json(kwargs_copy, response, exception)
-    elif mode in {Mode.COHERE_TOOLS, Mode.COHERE_JSON_SCHEMA}:
-        return reask_cohere_tools(kwargs_copy, response, exception)
-    elif mode == Mode.GEMINI_TOOLS:
-        return reask_gemini_tools(kwargs_copy, response, exception)
-    elif mode == Mode.GEMINI_JSON:
-        return reask_gemini_json(kwargs_copy, response, exception)
-    elif mode == Mode.VERTEXAI_TOOLS:
-        return reask_vertexai_tools(kwargs_copy, response, exception)
-    elif mode == Mode.VERTEXAI_JSON:
-        return reask_vertexai_json(kwargs_copy, response, exception)
-    elif mode in {Mode.TOOLS, Mode.TOOLS_STRICT}:
-        return reask_tools(kwargs_copy, response, exception)
-    elif mode == Mode.CEREBRAS_TOOLS:
-        return reask_cerebras_tools(kwargs_copy, response, exception)
-    elif mode in {Mode.RESPONSES_TOOLS, Mode.RESPONSES_TOOLS_WITH_INBUILT_TOOLS}:
-        return reask_responses_tools(kwargs_copy, response, exception)
-    elif mode == Mode.MD_JSON:
-        return reask_md_json(kwargs_copy, response, exception)
-    elif mode == Mode.FIREWORKS_TOOLS:
-        return reask_fireworks_tools(kwargs_copy, response, exception)
-    elif mode == Mode.FIREWORKS_JSON:
-        return reask_fireworks_json(kwargs_copy, response, exception)
-    elif mode == Mode.WRITER_TOOLS:
-        return reask_writer_tools(kwargs_copy, response, exception)
-    elif mode == Mode.WRITER_JSON:
-        return reask_writer_json(kwargs_copy, response, exception)
-    elif mode == Mode.BEDROCK_JSON:
-        return reask_bedrock_json(kwargs_copy, response, exception)
-    elif mode == Mode.PERPLEXITY_JSON:
-        return reask_perplexity_json(kwargs_copy, response, exception)
-    elif mode == Mode.GENAI_TOOLS:
-        return reask_genai_tools(kwargs_copy, response, exception)
-    elif mode == Mode.GENAI_STRUCTURED_OUTPUTS:
-        return reask_genai_structured_outputs(kwargs_copy, response, exception)
-    elif mode == Mode.MISTRAL_STRUCTURED_OUTPUTS:
-        return reask_mistral_structured_outputs(kwargs_copy, response, exception)
-    elif mode == Mode.MISTRAL_TOOLS:
-        return reask_mistral_tools(kwargs_copy, response, exception)
+    # Organized by provider (matching process_response.py structure)
+    REASK_HANDLERS = {
+        # OpenAI modes
+        Mode.FUNCTIONS: reask_default,
+        Mode.TOOLS_STRICT: reask_tools,
+        Mode.TOOLS: reask_tools,
+        Mode.JSON_O1: reask_default,
+        Mode.JSON: reask_md_json,
+        Mode.MD_JSON: reask_md_json,
+        Mode.JSON_SCHEMA: reask_md_json,
+        Mode.PARALLEL_TOOLS: reask_tools,
+        Mode.RESPONSES_TOOLS: reask_responses_tools,
+        Mode.RESPONSES_TOOLS_WITH_INBUILT_TOOLS: reask_responses_tools,
+        # Mistral modes
+        Mode.MISTRAL_TOOLS: reask_mistral_tools,
+        Mode.MISTRAL_STRUCTURED_OUTPUTS: reask_mistral_structured_outputs,
+        # Anthropic modes
+        Mode.ANTHROPIC_TOOLS: reask_anthropic_tools,
+        Mode.ANTHROPIC_REASONING_TOOLS: reask_anthropic_tools,
+        Mode.ANTHROPIC_JSON: reask_anthropic_json,
+        Mode.ANTHROPIC_PARALLEL_TOOLS: reask_anthropic_tools,
+        # Cohere modes
+        Mode.COHERE_TOOLS: reask_cohere_tools,
+        Mode.COHERE_JSON_SCHEMA: reask_cohere_tools,
+        # Gemini/Google modes
+        Mode.GEMINI_TOOLS: reask_gemini_tools,
+        Mode.GEMINI_JSON: reask_gemini_json,
+        Mode.GENAI_TOOLS: reask_genai_tools,
+        Mode.GENAI_STRUCTURED_OUTPUTS: reask_genai_structured_outputs,
+        # VertexAI modes
+        Mode.VERTEXAI_TOOLS: reask_vertexai_tools,
+        Mode.VERTEXAI_JSON: reask_vertexai_json,
+        Mode.VERTEXAI_PARALLEL_TOOLS: reask_vertexai_tools,
+        # Cerebras modes
+        Mode.CEREBRAS_TOOLS: reask_cerebras_tools,
+        Mode.CEREBRAS_JSON: reask_default,
+        # Fireworks modes
+        Mode.FIREWORKS_TOOLS: reask_fireworks_tools,
+        Mode.FIREWORKS_JSON: reask_fireworks_json,
+        # Writer modes
+        Mode.WRITER_TOOLS: reask_writer_tools,
+        Mode.WRITER_JSON: reask_writer_json,
+        # Bedrock modes
+        Mode.BEDROCK_TOOLS: reask_bedrock_tools,
+        Mode.BEDROCK_JSON: reask_bedrock_json,
+        # Perplexity modes
+        Mode.PERPLEXITY_JSON: reask_perplexity_json,
+        # OpenRouter modes
+        Mode.OPENROUTER_STRUCTURED_OUTPUTS: reask_default,
+        # XAI modes
+        Mode.XAI_JSON: reask_xai_json,
+        Mode.XAI_TOOLS: reask_xai_tools,
+    }
+
+    if mode in REASK_HANDLERS:
+        return REASK_HANDLERS[mode](kwargs_copy, response, exception)
     else:
         return reask_default(kwargs_copy, response, exception)
