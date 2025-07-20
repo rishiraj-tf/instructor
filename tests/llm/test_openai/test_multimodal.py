@@ -1,5 +1,5 @@
 import pytest
-from instructor.multimodal import Image, Audio
+from instructor.processing.multimodal import Image, Audio
 import instructor
 from pydantic import Field, BaseModel
 from itertools import product
@@ -192,7 +192,9 @@ def test_multimodal_pdf_file(model, mode, client, pdf_source):
                 },
                 {
                     "role": "user",
-                    "content": instructor.multimodal.PDF.autodetect(pdf_source),
+                    "content": instructor.processing.multimodal.PDF.autodetect(
+                        pdf_source
+                    ),
                 },
             ],
             autodetect_images=False,
