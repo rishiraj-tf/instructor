@@ -108,6 +108,98 @@ user = client.chat.completions.create(
 
 The **`from_provider`** API supports both sync and async usage (`async_client=True`) and automatically handles provider-specific configurations, making it effortless to switch between different LLM services.
 
+## Complex Schemas & Validation
+
+Instructor excels at extracting complex, nested data structures with custom validation rules. Here's a real-world example:
+
+```python
+import instructor
+from pydantic import BaseModel, Field, field_validator
+from typing import List, Optional
+from datetime import datetime
+from enum import Enum
+
+class Priority(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+class Address(BaseModel):
+    street: str
+    city: str
+    country: str
+    postal_code: str = Field(..., pattern=r'^\d{5}(-\d{4})?$')
+
+class Contact(BaseModel):
+    email: str = Field(..., pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+    phone: Optional[str] = Field(None, pattern=r'^\+?1?-?\.?\s?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$')
+
+class Ticket(BaseModel):
+    id: str
+    title: str = Field(..., min_length=5, max_length=100)
+    description: str = Field(..., min_length=10)
+    priority: Priority
+    assignee: Optional[str] = None
+    tags: List[str] = Field(default_factory=list, max_items=5)
+    estimated_hours: Optional[float] = Field(None, gt=0, le=100)
+    
+    @field_validator('estimated_hours')
+    @classmethod
+    def validate_hours(cls, v):
+        if v is not None and v % 0.5 != 0:
+            raise ValueError('Hours must be in 0.5 increments')
+        return v
+
+class CustomerSupport(BaseModel):
+    customer_name: str
+    customer_contact: Contact
+    customer_address: Address
+    tickets: List[Ticket] = Field(..., min_items=1)
+    total_estimated_time: float = Field(..., gt=0)
+    
+    @field_validator('total_estimated_time')
+    @classmethod
+    def validate_total_time(cls, v, info):
+        if 'tickets' in info.data:
+            ticket_time = sum(t.estimated_hours or 0 for t in info.data['tickets'])
+            if abs(v - ticket_time) > 0.1:  # Allow small floating point differences
+                raise ValueError(f'Total time {v} must match sum of ticket times {ticket_time}')
+        return v
+
+# Extract complex support case from natural language
+client = instructor.from_provider("openai/gpt-4o")
+
+support_case = client.chat.completions.create(
+    response_model=CustomerSupport,
+    messages=[{
+        "role": "user", 
+        "content": """
+        Support case for Sarah Johnson (sarah.johnson@techcorp.com, +1-555-123-4567).
+        Address: 123 Tech Street, San Francisco, CA 94105.
+        
+        Two tickets:
+        1. "Login system completely broken" - CRITICAL priority, needs 4.5 hours, tags: authentication, security
+        2. "Email notifications not working" - MEDIUM priority, needs 2 hours, tags: email, notifications
+        
+        Total estimated time: 6.5 hours
+        """
+    }],
+    max_retries=3
+)
+
+print(f"Customer: {support_case.customer_name}")
+print(f"Total tickets: {len(support_case.tickets)}")
+print(f"Critical tickets: {len([t for t in support_case.tickets if t.priority == Priority.CRITICAL])}")
+```
+
+**Key Features Demonstrated:**
+- **Deep nesting**: `CustomerSupport` → `Contact`/`Address`/`List[Ticket]`
+- **Custom validation**: Email patterns, phone formats, business rules
+- **Enums and constraints**: Priority levels, field length limits
+- **Cross-field validation**: Total time must match ticket sum
+- **Automatic retries**: Failed validation triggers re-extraction
+
 ## Supported LLM Providers
 
 Instructor works seamlessly with **15+ popular LLM providers**, giving you the flexibility to use any model while maintaining consistent structured output handling. From OpenAI's GPT models to **open source alternatives with Ollama**, **DeepSeek models**, and local inference, get validated data extraction everywhere.
