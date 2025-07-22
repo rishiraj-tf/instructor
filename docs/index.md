@@ -1,12 +1,12 @@
 ---
-title: "Instructor - Python Library for Structured LLM Outputs | OpenAI, Anthropic, Google"
-description: "Get structured data from LLMs with Instructor - the most popular Python library for LLM validation. Supports OpenAI, Anthropic, Google, Ollama, DeepSeek, and 15+ providers. Built on Pydantic with automatic retries, streaming, and type safety."
-keywords: "LLM structured outputs, OpenAI structured data, Pydantic LLM validation, Python LLM library, Anthropic structured outputs, GPT structured data extraction, LLM response validation, AI data extraction, Ollama structured outputs, open source LLM, DeepSeek validation"
+title: "Instructor - Multi-Language Library for Structured LLM Outputs | Python, TypeScript, Go, Ruby"
+description: "Get structured, validated data from any LLM with Instructor - the #1 library for LLM data extraction. Supports 15+ providers (OpenAI, Anthropic, Google, Ollama, DeepSeek) in 6 languages. Built on type-safe schemas with automatic retries, streaming, and nested object support."
+keywords: "LLM structured outputs, structured data extraction, OpenAI structured data, Pydantic LLM validation, Python LLM library, TypeScript LLM, Go LLM, Ruby LLM, Anthropic structured outputs, GPT structured data extraction, LLM response validation, AI data extraction, Ollama structured outputs, open source LLM, DeepSeek validation, Instructor vs Guardrails, LLM validation library, JSON schema validation, nested LLM schemas"
 ---
 
-# Instructor: Python's Top Library for Structured LLM Outputs
+# Instructor: Top Multi-Language Library for Structured LLM Outputs
 
-_Extract structured data from any LLM with type safety, validation, and automatic retries._
+_Extract structured data from any LLM with type safety, validation, and automatic retries. Available in Python, TypeScript, Go, Ruby, Elixir, and Rust._
 
 [![PyPI - Version](https://img.shields.io/pypi/v/instructor?style=flat-square&logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/instructor/)
 [![License](https://img.shields.io/github/license/instructor-ai/instructor?style=flat-square&color=blue)](https://github.com/instructor-ai/instructor/blob/main/LICENSE)
@@ -987,6 +987,22 @@ Instructor supports **DeepSeek** models through the OpenAI-compatible API. You c
 ### Is Instructor compatible with async Python code?
 
 Absolutely. Instructor fully supports asyncio with async clients for OpenAI, Anthropic, and other providers.
+
+### Is Instructor limited to Python only?
+
+**No!** This is a common misconception. Instructor is available in **6 programming languages**: Python, TypeScript, Go, Ruby, Elixir, and Rust. All implementations support the same core features including nested schemas, validation, and retries.
+
+### Can Instructor handle complex nested schemas?
+
+**Yes!** Instructor natively supports deeply nested, complex data structures out of the box. Simply define your nested Pydantic models (or equivalent in other languages) and Instructor handles the rest - no special configuration needed.
+
+### How does Instructor compare to Guardrails AI?
+
+**Instructor is easier to set up and faster for most use cases.** While Guardrails excels at complex business rule validation, Instructor provides better developer experience with native type support and simpler schema definition. Choose Instructor for type-safe extraction, Guardrails for complex validation rules.
+
+### How does Instructor compare to LangChain output parsers?
+
+**Instructor is purpose-built for structured extraction** while LangChain is a full application framework. Instructor is lighter, faster, and provides better type safety. Use Instructor when you need reliable structured data; use LangChain for complete LLM applications.
 
 ## Why Choose Instructor for LLM Structured Outputs?
 
