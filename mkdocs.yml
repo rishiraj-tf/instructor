@@ -195,6 +195,7 @@ nav:
     - Writer: 'integrations/writer.md'
     - OpenRouter: 'integrations/openrouter.md'
     - SambaNova: 'integrations/sambanova.md'
+    - TrueFoundry: 'integrations/truefoundry.md'
   - Cookbook:
     - Overview: 'examples/index.md'
     - "Audio Information Extraction": 'examples/audio_extraction.md'
